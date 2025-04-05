@@ -2,23 +2,32 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
+import styles from "./css/Navbar.module.css";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
 
   const isActive = (path: string) => {
     return pathname === path;
   };
+  
+  const handleSignOut = () => {
+    logout();
+    router.push('/auth/login');
+  };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+    <header className={styles.header}>
+      <div className={styles.container}>
+        <div className={styles.wrapper}>
           <div className="flex items-center">
-            <Link href="/dashboard" className="flex items-center space-x-2">
+            <Link href="/dashboard" className={styles.logo}>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
@@ -27,7 +36,7 @@ export function Navbar() {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="h-6 w-6 text-primary"
+                className={styles.logoIcon}
               >
                 <circle cx="12" cy="12" r="10" />
                 <circle cx="12" cy="12" r="4" />
@@ -36,19 +45,17 @@ export function Navbar() {
                 <line x1="14.83" y1="9.17" x2="19.07" y2="4.93" />
                 <line x1="4.93" y1="19.07" x2="9.17" y2="14.83" />
               </svg>
-              <span className="text-lg font-bold">
+              <span className={styles.logoText}>
                 Soundwave
               </span>
             </Link>
-            <div className="hidden md:block">
-              <div className="ml-8 flex items-baseline space-x-2">
+            <div className={styles.desktopNav}>
+              <div className={styles.navItems}>
                 <Link
                   href="/dashboard"
                   className={cn(
-                    "px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                    isActive("/dashboard")
-                      ? "bg-primary/10 text-primary"
-                      : "text-foreground hover:bg-accent hover:text-accent-foreground"
+                    styles.navLink,
+                    isActive("/dashboard") ? styles.activeNavLink : styles.inactiveNavLink
                   )}
                 >
                   Home
@@ -56,10 +63,8 @@ export function Navbar() {
                 <Link
                   href="/dashboard/search"
                   className={cn(
-                    "px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                    isActive("/dashboard/search")
-                      ? "bg-primary/10 text-primary"
-                      : "text-foreground hover:bg-accent hover:text-accent-foreground"
+                    styles.navLink,
+                    isActive("/dashboard/search") ? styles.activeNavLink : styles.inactiveNavLink
                   )}
                 >
                   Search
@@ -67,10 +72,8 @@ export function Navbar() {
                 <Link
                   href="/dashboard/liked"
                   className={cn(
-                    "px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                    isActive("/dashboard/liked")
-                      ? "bg-primary/10 text-primary"
-                      : "text-foreground hover:bg-accent hover:text-accent-foreground"
+                    styles.navLink,
+                    isActive("/dashboard/liked") ? styles.activeNavLink : styles.inactiveNavLink
                   )}
                 >
                   Liked Songs
@@ -79,18 +82,18 @@ export function Navbar() {
             </div>
           </div>
           
-          <div className="hidden md:block">
-            <div className="flex items-center gap-4">
+          <div className={styles.desktopControls}>
+            <div className={styles.controlsWrapper}>
               <div className="relative">
                 <button
                   type="button"
-                  className="flex items-center gap-2 rounded-full bg-background text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-border"
+                  className={styles.userButton}
                   id="user-menu-button"
                   aria-expanded={isOpen}
                   onClick={() => setIsOpen(!isOpen)}
                 >
                   <span className="sr-only">Open user menu</span>
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <div className={styles.avatar}>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="18"
@@ -106,7 +109,7 @@ export function Navbar() {
                       <circle cx="12" cy="7" r="4" />
                     </svg>
                   </div>
-                  <span className="hidden sm:inline-block">User Name</span>
+                  <span className={styles.userName}>{user?.username || 'Guest'}</span>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="16"
@@ -117,21 +120,21 @@ export function Navbar() {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="hidden sm:inline-block"
+                    className={styles.userName}
                   >
                     <path d="m6 9 6 6 6-6" />
                   </svg>
                 </button>
                 {isOpen && (
                   <div
-                    className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-popover p-1 shadow-lg focus:outline-none border border-border"
+                    className={styles.dropdown}
                     role="menu"
                     aria-orientation="vertical"
                     aria-labelledby="user-menu-button"
                   >
                     <Link
                       href="#"
-                      className="flex items-center gap-2 w-full rounded-sm px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                      className={styles.dropdownItem}
                       onClick={() => setIsOpen(false)}
                     >
                       <svg
@@ -152,7 +155,7 @@ export function Navbar() {
                     </Link>
                     <Link
                       href="#"
-                      className="flex items-center gap-2 w-full rounded-sm px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                      className={styles.dropdownItem}
                       onClick={() => setIsOpen(false)}
                     >
                       <svg
@@ -172,9 +175,12 @@ export function Navbar() {
                       Settings
                     </Link>
                     <Link
-                      href="/auth/login"
-                      className="flex items-center gap-2 w-full rounded-sm px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-                      onClick={() => setIsOpen(false)}
+                      href="#"
+                      className={styles.dropdownItem}
+                      onClick={() => {
+                        setIsOpen(false);
+                        handleSignOut();
+                      }}
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -199,10 +205,10 @@ export function Navbar() {
             </div>
           </div>
           
-          <div className="flex md:hidden">
+          <div className={styles.mobileMenuButton}>
             <button
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-foreground hover:bg-accent hover:text-accent-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className={styles.mobileMenuIcon}
               aria-controls="mobile-menu"
               aria-expanded={isOpen}
               onClick={() => setIsOpen(!isOpen)}
@@ -244,86 +250,48 @@ export function Navbar() {
       </div>
 
       {/* Mobile menu */}
-      {isOpen && (
-        <div className="md:hidden" id="mobile-menu">
-          <div className="border-t border-border px-2 pb-3 pt-2">
-            <Link
-              href="/dashboard"
-              className={cn(
-                "block px-3 py-2 rounded-md text-base font-medium transition-colors",
-                isActive("/dashboard")
-                  ? "bg-primary/10 text-primary"
-                  : "text-foreground hover:bg-accent hover:text-accent-foreground"
-              )}
-              onClick={() => setIsOpen(false)}
-            >
-              Home
-            </Link>
-            <Link
-              href="/dashboard/search"
-              className={cn(
-                "block px-3 py-2 rounded-md text-base font-medium transition-colors",
-                isActive("/dashboard/search")
-                  ? "bg-primary/10 text-primary"
-                  : "text-foreground hover:bg-accent hover:text-accent-foreground"
-              )}
-              onClick={() => setIsOpen(false)}
-            >
-              Search
-            </Link>
-            <Link
-              href="/dashboard/liked"
-              className={cn(
-                "block px-3 py-2 rounded-md text-base font-medium transition-colors",
-                isActive("/dashboard/liked")
-                  ? "bg-primary/10 text-primary"
-                  : "text-foreground hover:bg-accent hover:text-accent-foreground"
-              )}
-              onClick={() => setIsOpen(false)}
-            >
-              Liked Songs
-            </Link>
-          </div>
-          
-          <div className="border-t border-border pb-3 pt-4">
-            <div className="flex items-center px-5">
-              <div className="flex-shrink-0">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-3">
-                <div className="text-base font-medium">
-                  User Name
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  user@example.com
-                </div>
-              </div>
-            </div>
-            <div className="mt-3 space-y-1 px-2">
-              <Link
-                href="#"
-                className="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                onClick={() => setIsOpen(false)}
-              >
+      <div className={cn(styles.mobileMenu, isOpen && styles.mobileMenuActive)} id="mobile-menu">
+        <div className={styles.mobileLinks}>
+          <Link
+            href="/dashboard"
+            className={cn(
+              styles.mobileNavLink,
+              isActive("/dashboard") ? styles.activeNavLink : styles.inactiveNavLink
+            )}
+            onClick={() => setIsOpen(false)}
+          >
+            Home
+          </Link>
+          <Link
+            href="/dashboard/search"
+            className={cn(
+              styles.mobileNavLink,
+              isActive("/dashboard/search") ? styles.activeNavLink : styles.inactiveNavLink
+            )}
+            onClick={() => setIsOpen(false)}
+          >
+            Search
+          </Link>
+          <Link
+            href="/dashboard/liked"
+            className={cn(
+              styles.mobileNavLink,
+              isActive("/dashboard/liked") ? styles.activeNavLink : styles.inactiveNavLink
+            )}
+            onClick={() => setIsOpen(false)}
+          >
+            Liked Songs
+          </Link>
+        </div>
+        
+        <div className={styles.mobileUserSection}>
+          <div className={styles.mobileUserHeader}>
+            <div className={styles.mobileAvatar}>
+              <div className={styles.avatar}>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
+                  width="20"
+                  height="20"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -334,55 +302,91 @@ export function Navbar() {
                   <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
                 </svg>
-                Your Profile
-              </Link>
-              <Link
-                href="#"
-                className="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                onClick={() => setIsOpen(false)}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-                Settings
-              </Link>
-              <Link
-                href="/auth/login"
-                className="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                onClick={() => setIsOpen(false)}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
-                Sign out
-              </Link>
+              </div>
+            </div>
+            <div className={styles.mobileUserInfo}>
+              <div className={styles.mobileUserName}>
+                {user?.username || 'Guest'}
+              </div>
+              <div className={styles.mobileUserEmail}>
+                {user ? 'Logged in user' : 'Not logged in'}
+              </div>
             </div>
           </div>
+          <div className={styles.mobileUserLinks}>
+            <Link
+              href="#"
+              className={styles.mobileNavLink}
+              onClick={() => setIsOpen(false)}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="mr-2 inline-block"
+              >
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              Your Profile
+            </Link>
+            <Link
+              href="#"
+              className={styles.mobileNavLink}
+              onClick={() => setIsOpen(false)}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="mr-2 inline-block"
+              >
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              Settings
+            </Link>
+            <Link
+              href="#"
+              className={styles.mobileNavLink}
+              onClick={() => {
+                setIsOpen(false);
+                handleSignOut();
+              }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="mr-2 inline-block"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              Sign out
+            </Link>
+          </div>
         </div>
-      )}
+      </div>
     </header>
   );
 }

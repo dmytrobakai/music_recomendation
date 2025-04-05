@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import styles from "./css/MusicCard.module.css";
 
 interface MusicCardProps {
   id: string;
@@ -35,23 +36,23 @@ export function MusicCard({
 
   return (
     <div 
-      className="music-card bg-card rounded-xl shadow overflow-hidden relative"
+      className={styles.card}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="relative aspect-square overflow-hidden">
+      <div className={styles.imageContainer}>
         <img
           src={coverImage}
           alt={`${title} by ${artist}`}
-          className="w-full h-full object-cover"
+          className={styles.image}
         />
         <div className={cn(
-          "absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 transition-opacity duration-300",
-          isHovered ? "opacity-100" : "opacity-0"
+          styles.overlay,
+          isHovered ? styles.overlay : null
         )}>
           <button
             aria-label="Play"
-            className="bg-primary text-primary-foreground rounded-full w-14 h-14 flex items-center justify-center transition-transform duration-300 hover:scale-110"
+            className={styles.playButton}
             onClick={() => console.log(`Play ${title}`)}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -61,22 +62,22 @@ export function MusicCard({
         </div>
       </div>
 
-      <div className="p-4">
-        <div className="flex justify-between items-start">
-          <div className="overflow-hidden">
-            <h3 className="font-medium text-lg text-card-foreground truncate">{title}</h3>
-            <p className="text-sm text-muted-foreground truncate">{artist}</p>
-            {album && <p className="text-xs text-muted-foreground/70 truncate mt-1">{album}</p>}
+      <div className={styles.content}>
+        <div className={styles.header}>
+          <div className={styles.info}>
+            <h3 className={styles.title}>{title}</h3>
+            <p className={styles.artist}>{artist}</p>
+            {album && <p className={styles.album}>{album}</p>}
           </div>
           <button
-            className="flex-shrink-0 ml-2 mt-1"
+            className={styles.likeButton}
             onClick={handleLikeClick}
             aria-label={liked ? "Unlike" : "Like"}
           >
             {liked ? (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 text-destructive"
+                className={styles.likedIcon}
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
@@ -89,7 +90,7 @@ export function MusicCard({
             ) : (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 text-muted-foreground hover:text-destructive transition-colors"
+                className={styles.unlikedIcon}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"

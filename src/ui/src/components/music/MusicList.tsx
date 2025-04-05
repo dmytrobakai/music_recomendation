@@ -1,14 +1,7 @@
 import { MusicCard } from "./MusicCard";
 import { cn } from "@/lib/utils";
-
-export interface MusicItem {
-  id: string;
-  title: string;
-  artist: string;
-  album?: string;
-  coverImage: string;
-  isLiked?: boolean;
-}
+import { MusicItem } from "@/lib/api";
+import styles from "./css/MusicList.module.css";
 
 interface MusicListProps {
   items: MusicItem[];
@@ -19,17 +12,14 @@ interface MusicListProps {
 export function MusicList({ items, onLikeToggle, className }: MusicListProps) {
   if (items.length === 0) {
     return (
-      <div className="text-center py-12 bg-card/40 rounded-lg border border-border">
-        <p className="text-muted-foreground">No music found.</p>
+      <div className={styles.emptyState}>
+        <p className={styles.emptyStateText}>No music found.</p>
       </div>
     );
   }
 
   return (
-    <div className={cn(
-      "grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
-      className
-    )}>
+    <div className={cn(styles.grid, className)}>
       {items.map((item) => (
         <MusicCard
           key={item.id}

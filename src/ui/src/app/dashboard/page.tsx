@@ -1,80 +1,62 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MusicList, MusicItem } from "@/components/music/MusicList";
-
-// Mock data for recommendations
-const mockRecommendations: MusicItem[] = [
-  {
-    id: "rec1",
-    title: "Blinding Lights",
-    artist: "The Weeknd",
-    album: "After Hours",
-    coverImage: "https://via.placeholder.com/150",
-    isLiked: false,
-  },
-  {
-    id: "rec2",
-    title: "Save Your Tears",
-    artist: "The Weeknd",
-    album: "After Hours",
-    coverImage: "https://via.placeholder.com/150",
-    isLiked: true,
-  },
-  {
-    id: "rec3",
-    title: "Levitating",
-    artist: "Dua Lipa",
-    album: "Future Nostalgia",
-    coverImage: "https://via.placeholder.com/150",
-    isLiked: false,
-  },
-  {
-    id: "rec4",
-    title: "Stay",
-    artist: "The Kid LAROI, Justin Bieber",
-    album: "F*CK LOVE 3: OVER YOU",
-    coverImage: "https://via.placeholder.com/150",
-    isLiked: false,
-  },
-  {
-    id: "rec5",
-    title: "good 4 u",
-    artist: "Olivia Rodrigo",
-    album: "SOUR",
-    coverImage: "https://via.placeholder.com/150",
-    isLiked: false,
-  },
-  {
-    id: "rec6",
-    title: "MONTERO (Call Me By Your Name)",
-    artist: "Lil Nas X",
-    album: "MONTERO",
-    coverImage: "https://via.placeholder.com/150",
-    isLiked: false,
-  },
-];
+import { MusicList } from "@/components/music/MusicList";
+import { musicApi, transformSongToMusicItem, MusicItem } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 export default function DashboardPage() {
   const [recommendations, setRecommendations] = useState<MusicItem[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Simulate loading recommendations
+  const { user } = useAuth();
+  
+  // Load recommendations from API
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setRecommendations(mockRecommendations);
-      setLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    const fetchRecommendations = async () => {
+      setLoading(true);
+      try {
+        // Fetch liked songs to know which ones are already liked
+        const likedSongs = await musicApi.getLikedSongs();
+        const likedIds = new Set(likedSongs.map(song => song.id));
+        
+        // Fetch recommended songs
+        const recommendedSongs = await musicApi.getRecommendedSongs();
+        
+        // Transform API songs to UI MusicItems, marking as liked if needed
+        const musicItems = recommendedSongs.map(song => 
+          transformSongToMusicItem(song, likedIds.has(song.id))
+        );
+        
+        setRecommendations(musicItems);
+      } catch (error) {
+        console.error("Failed to fetch recommendations:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchRecommendations();
   }, []);
 
-  const handleLikeToggle = (id: string, liked: boolean) => {
-    setRecommendations((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, isLiked: liked } : item
-      )
-    );
+  const handleLikeToggle = async (id: string, liked: boolean) => {
+    const songId = parseInt(id);
+    
+    try {
+      if (liked) {
+        await musicApi.likeSong(songId);
+      } else {
+        await musicApi.unlikeSong(songId);
+      }
+      
+      // Update UI state
+      setRecommendations(prev =>
+        prev.map(item => 
+          item.id === id ? { ...item, isLiked: liked } : item
+        )
+      );
+    } catch (error) {
+      console.error("Failed to update like status:", error);
+    }
   };
 
   return (

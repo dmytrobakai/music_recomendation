@@ -1,123 +1,75 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SearchBar } from "@/components/music/SearchBar";
-import { MusicList, MusicItem } from "@/components/music/MusicList";
-
-// Mock data for search results
-const mockSearchResults: Record<string, MusicItem[]> = {
-  "rock": [
-    {
-      id: "s1",
-      title: "Bohemian Rhapsody",
-      artist: "Queen",
-      album: "A Night at the Opera",
-      coverImage: "https://via.placeholder.com/150",
-      isLiked: true,
-    },
-    {
-      id: "s2",
-      title: "Sweet Child O' Mine",
-      artist: "Guns N' Roses",
-      album: "Appetite for Destruction",
-      coverImage: "https://via.placeholder.com/150",
-      isLiked: false,
-    },
-    {
-      id: "s3",
-      title: "Back in Black",
-      artist: "AC/DC",
-      album: "Back in Black",
-      coverImage: "https://via.placeholder.com/150",
-      isLiked: false,
-    },
-  ],
-  "pop": [
-    {
-      id: "s4",
-      title: "Blinding Lights",
-      artist: "The Weeknd",
-      album: "After Hours",
-      coverImage: "https://via.placeholder.com/150",
-      isLiked: false,
-    },
-    {
-      id: "s5",
-      title: "Bad Guy",
-      artist: "Billie Eilish",
-      album: "When We All Fall Asleep, Where Do We Go?",
-      coverImage: "https://via.placeholder.com/150",
-      isLiked: true,
-    },
-    {
-      id: "s6",
-      title: "Watermelon Sugar",
-      artist: "Harry Styles",
-      album: "Fine Line",
-      coverImage: "https://via.placeholder.com/150",
-      isLiked: false,
-    },
-  ],
-  "jazz": [
-    {
-      id: "s7",
-      title: "Take Five",
-      artist: "Dave Brubeck",
-      album: "Time Out",
-      coverImage: "https://via.placeholder.com/150",
-      isLiked: false,
-    },
-    {
-      id: "s8",
-      title: "So What",
-      artist: "Miles Davis",
-      album: "Kind of Blue",
-      coverImage: "https://via.placeholder.com/150",
-      isLiked: false,
-    },
-  ],
-};
+import { MusicList } from "@/components/music/MusicList";
+import { musicApi, transformSongToMusicItem, MusicItem } from "@/lib/api";
 
 export default function SearchPage() {
   const [searchResults, setSearchResults] = useState<MusicItem[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [likedSongIds, setLikedSongIds] = useState<Set<number>>(new Set());
 
-  const handleSearch = (query: string) => {
+  // Get liked songs on initial load to know which results are already liked
+  useEffect(() => {
+    const fetchLikedSongs = async () => {
+      try {
+        const likedSongs = await musicApi.getLikedSongs();
+        setLikedSongIds(new Set(likedSongs.map(song => song.id)));
+      } catch (error) {
+        console.error("Failed to fetch liked songs:", error);
+      }
+    };
+    
+    fetchLikedSongs();
+  }, []);
+
+  const handleSearch = async (query: string) => {
     setLoading(true);
     setHasSearched(true);
     
-    // Simulate API call with delay
-    setTimeout(() => {
-      const lowerQuery = query.toLowerCase();
-      let results: MusicItem[] = [];
+    try {
+      // Search songs through API
+      const results = await musicApi.searchSongs(query);
       
-      // Check if query matches any of our mock categories
-      if (lowerQuery === "rock" || lowerQuery === "pop" || lowerQuery === "jazz") {
-        results = mockSearchResults[lowerQuery] || [];
-      } else {
-        // Search across all categories for matching titles or artists
-        Object.values(mockSearchResults).forEach(categoryResults => {
-          const matches = categoryResults.filter(
-            item => 
-              item.title.toLowerCase().includes(lowerQuery) || 
-              item.artist.toLowerCase().includes(lowerQuery)
-          );
-          results = [...results, ...matches];
-        });
-      }
+      // Transform to UI format and mark as liked if necessary
+      const musicItems = results.map(song => 
+        transformSongToMusicItem(song, likedSongIds.has(song.id))
+      );
       
-      setSearchResults(results);
+      setSearchResults(musicItems);
+    } catch (error) {
+      console.error("Search failed:", error);
+      setSearchResults([]);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
   
-  const handleLikeToggle = (id: string, liked: boolean) => {
-    setSearchResults(prev =>
-      prev.map(item => 
-        item.id === id ? { ...item, isLiked: liked } : item
-      )
-    );
+  const handleLikeToggle = async (id: string, liked: boolean) => {
+    const songId = parseInt(id);
+    
+    try {
+      if (liked) {
+        await musicApi.likeSong(songId);
+        setLikedSongIds(prev => new Set(prev).add(songId));
+      } else {
+        await musicApi.unlikeSong(songId);
+        const newLikedIds = new Set(likedSongIds);
+        newLikedIds.delete(songId);
+        setLikedSongIds(newLikedIds);
+      }
+      
+      // Update UI state
+      setSearchResults(prev =>
+        prev.map(item => 
+          item.id === id ? { ...item, isLiked: liked } : item
+        )
+      );
+    } catch (error) {
+      console.error("Failed to update like status:", error);
+    }
   };
 
   return (

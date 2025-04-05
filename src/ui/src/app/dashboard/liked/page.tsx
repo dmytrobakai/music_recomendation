@@ -1,59 +1,50 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MusicList, MusicItem } from "@/components/music/MusicList";
-
-// Mock data for liked songs
-const mockLikedSongs: MusicItem[] = [
-  {
-    id: "l1",
-    title: "Bohemian Rhapsody",
-    artist: "Queen",
-    album: "A Night at the Opera",
-    coverImage: "https://via.placeholder.com/150",
-    isLiked: true,
-  },
-  {
-    id: "l2",
-    title: "Save Your Tears",
-    artist: "The Weeknd",
-    album: "After Hours",
-    coverImage: "https://via.placeholder.com/150",
-    isLiked: true,
-  },
-  {
-    id: "l3",
-    title: "Bad Guy",
-    artist: "Billie Eilish",
-    album: "When We All Fall Asleep, Where Do We Go?",
-    coverImage: "https://via.placeholder.com/150",
-    isLiked: true,
-  },
-];
+import { MusicList } from "@/components/music/MusicList";
+import { musicApi, transformSongToMusicItem, MusicItem } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 export default function LikedSongsPage() {
   const [likedSongs, setLikedSongs] = useState<MusicItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
-  // Simulate loading liked songs
+  // Load liked songs from API
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setLikedSongs(mockLikedSongs);
-      setLoading(false);
-    }, 1000);
+    const fetchLikedSongs = async () => {
+      setLoading(true);
+      try {
+        // Get liked songs from API
+        const songs = await musicApi.getLikedSongs();
+        
+        // Transform to UI format with isLiked=true for all
+        const musicItems = songs.map(song => transformSongToMusicItem(song, true));
+        
+        setLikedSongs(musicItems);
+      } catch (error) {
+        console.error("Failed to fetch liked songs:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchLikedSongs();
+  }, [user]); // Refetch when user changes
 
-    return () => clearTimeout(timer);
-  }, []);
-
-  const handleLikeToggle = (id: string, liked: boolean) => {
+  const handleLikeToggle = async (id: string, liked: boolean) => {
+    const songId = parseInt(id);
+    
     if (!liked) {
-      // Remove from liked songs if unliked
-      setLikedSongs((prev) => prev.filter((item) => item.id !== id));
-    } else {
-      // Update liked status
-      setLikedSongs((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, isLiked: liked } : item))
-      );
+      try {
+        // Unlike the song via API
+        await musicApi.unlikeSong(songId);
+        
+        // Remove from UI
+        setLikedSongs(prev => prev.filter(item => item.id !== id));
+      } catch (error) {
+        console.error("Failed to unlike song:", error);
+      }
     }
   };
 
