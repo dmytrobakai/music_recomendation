@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import MusicCard from './MusicCard';
+import React, { useEffect, useState } from "react";
+
+import MusicCard from "./MusicCard";
 
 interface Song {
   id: number;
@@ -15,109 +16,145 @@ interface MusicListProps {
   emptyMessage?: string;
 }
 
-const MusicList: React.FC<MusicListProps> = ({ songs, title, emptyMessage = 'No songs found.' }) => {
+const MusicList: React.FC<MusicListProps> = ({
+  songs,
+  title,
+  emptyMessage = "No songs found.",
+}) => {
   const [likedSongs, setLikedSongs] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  
+  const user = localStorage.getItem("username");
+
   // Load liked songs on component mount
   useEffect(() => {
     const fetchLikedSongs = async () => {
       try {
-        const response = await fetch('http://localhost:8000/liked');
+        const response = await fetch("http://localhost:8000/liked/" + user);
         if (response.ok) {
           const data = await response.json();
           setLikedSongs(data.map((song: Song) => song.id));
         }
       } catch (error) {
-        console.error('Error fetching liked songs:', error);
+        console.error("Error fetching liked songs:", error);
       }
     };
-    
+
     fetchLikedSongs();
   }, []);
-  
+
   const handleLike = async (id: number) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/like/${id}`, {
-        method: 'POST',
-      });
-      
+      const response = await fetch(
+        `http://localhost:8000/like/${id}/user/${user}`,
+        {
+          method: "POST",
+        }
+      );
+
       if (response.ok) {
-        setLikedSongs(prev => [...prev, id]);
+        setLikedSongs((prev) => [...prev, id]);
       }
     } catch (error) {
-      console.error('Error liking song:', error);
+      console.error("Error liking song:", error);
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   const handleUnlike = async (id: number) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/unlike/${id}`, {
-        method: 'POST',
-      });
-      
+      const response = await fetch(
+        `http://localhost:8000/unlike/${id}/user/${user}`,
+        {
+          method: "POST",
+        }
+      );
+
       if (response.ok) {
-        setLikedSongs(prev => prev.filter(songId => songId !== id));
+        setLikedSongs((prev) => prev.filter((songId) => songId !== id));
       }
     } catch (error) {
-      console.error('Error unliking song:', error);
+      console.error("Error unliking song:", error);
     } finally {
       setIsLoading(false);
     }
   };
-  
+
+  const handleDeleteArtist = async (artistId: number) => {
+    try {
+      const res = await fetch(`http://localhost:8000/artist/${artistId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "Delete failed");
+      }
+    } catch (error: any) {
+      console.error("Delete failed:", error);
+      alert(`Error: ${error.message}`);
+    }
+  };
+
   // If no songs are provided, show a message
   if (songs.length === 0) {
     return (
-      <div style={{ marginBottom: 'var(--space-xxl)' }}>
-        <h2 style={{ 
-          marginBottom: 'var(--space-lg)',
-          fontSize: '1.5rem',
-          fontWeight: 600,
-        }}>
+      <div style={{ marginBottom: "var(--space-xxl)" }}>
+        <h2
+          style={{
+            marginBottom: "var(--space-lg)",
+            fontSize: "1.5rem",
+            fontWeight: 600,
+          }}
+        >
           {title}
         </h2>
-        
-        <div style={{ 
-          backgroundColor: 'var(--surface)',
-          padding: 'var(--space-xl)',
-          borderRadius: 'var(--radius-lg)',
-          textAlign: 'center',
-          color: 'var(--text-secondary)',
-          border: '1px solid var(--border-color)'
-        }}>
+
+        <div
+          style={{
+            backgroundColor: "var(--surface)",
+            padding: "var(--space-xl)",
+            borderRadius: "var(--radius-lg)",
+            textAlign: "center",
+            color: "var(--text-secondary)",
+            border: "1px solid var(--border-color)",
+          }}
+        >
           <p>{emptyMessage}</p>
         </div>
       </div>
     );
   }
-  
+
   return (
-    <div style={{ marginBottom: 'var(--space-xxl)' }}>
-      <h2 style={{ 
-        marginBottom: 'var(--space-lg)',
-        fontSize: '1.5rem',
-        fontWeight: 600,
-      }}>
+    <div style={{ marginBottom: "var(--space-xxl)" }}>
+      <h2
+        style={{
+          marginBottom: "var(--space-lg)",
+          fontSize: "1.5rem",
+          fontWeight: 600,
+        }}
+      >
         {title}
       </h2>
-      
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-        gap: 'var(--space-lg)'
-      }}>
-        {songs.map(song => (
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+          gap: "var(--space-lg)",
+        }}
+      >
+        {songs.map((song) => (
           <MusicCard
             key={song.id}
             song={song}
             isLiked={likedSongs.includes(song.id)}
             onLike={handleLike}
             onUnlike={handleUnlike}
+            onDeleteArtist={handleDeleteArtist}
           />
         ))}
       </div>

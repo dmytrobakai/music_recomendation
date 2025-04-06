@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
 interface Song {
   id: number;
   title: string;
-  artist: string;
+  artist_name: string;
+  album_cover: string;
+  artist_id: number; // додано поле
 }
 
 interface MusicCardProps {
@@ -11,9 +13,16 @@ interface MusicCardProps {
   isLiked: boolean;
   onLike: (id: number) => void;
   onUnlike: (id: number) => void;
+  onDeleteArtist: (artistId: number) => void; // новий пропс
 }
 
-const MusicCard: React.FC<MusicCardProps> = ({ song, isLiked, onLike, onUnlike }) => {
+const MusicCard: React.FC<MusicCardProps> = ({
+  song,
+  isLiked,
+  onLike,
+  onUnlike,
+  onDeleteArtist,
+}) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -29,140 +38,147 @@ const MusicCard: React.FC<MusicCardProps> = ({ song, isLiked, onLike, onUnlike }
       setIsLoading(false);
     }
   };
-  
-  // Generate a random color for the background
-  const getGradientBackground = () => {
-    const gradients = [
-      'linear-gradient(135deg, #4F46E5, #7C3AED)',  // purple
-      'linear-gradient(135deg, #0284C7, #0EA5E9)',  // blue
-      'linear-gradient(135deg, #16A34A, #22C55E)',  // green
-      'linear-gradient(135deg, #EA580C, #F97316)',  // orange
-      'linear-gradient(135deg, #BE123C, #F43F5E)',  // red
-    ];
-    return gradients[song.id % gradients.length];
-  };
-  
-  // Music note icon
-  const MusicIcon = () => (
-    <svg 
-      width="32" 
-      height="32" 
-      viewBox="0 0 24 24"
-      strokeWidth="1.5"
-      stroke="currentColor"
-      fill="none" 
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-    >
-      <path d="M9 18v-13l12-2v13" />
-      <path d="M9 18c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z" />
-      <path d="M21 16c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z" />
-    </svg>
-  );
 
-  // Heart/Like icon
-  const HeartIcon = ({ filled }: { filled: boolean }) => (
-    <svg 
-      width="24" 
-      height="24" 
-      viewBox="0 0 24 24"
-      strokeWidth="1.5"
-      stroke={filled ? 'none' : 'currentColor'}
-      fill={filled ? 'var(--primary-color)' : 'none'}
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-    >
-      <path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572" />
-    </svg>
-  );
-  
+  const handleDelete = () => {
+    if (
+      confirm(
+        `Are you sure you want to delete artist ${song.artist_name} and all their songs?`
+      )
+    ) {
+      onDeleteArtist(song.artist_id);
+    }
+  };
+
   return (
-    <div 
+    <div
       className="slideUp"
       style={{
-        backgroundColor: 'var(--surface)',
-        borderRadius: 'var(--radius-lg)',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        transition: 'transform var(--transition-default), box-shadow var(--transition-default)',
-        transform: isHovered ? 'translateY(-5px)' : 'translateY(0)',
-        boxShadow: isHovered ? 'var(--shadow-lg)' : 'var(--shadow-sm)',
-        border: '1px solid var(--border-color)'
+        backgroundColor: "var(--surface)",
+        borderRadius: "var(--radius-lg)",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        transition:
+          "transform var(--transition-default), box-shadow var(--transition-default)",
+        transform: isHovered ? "translateY(-5px)" : "translateY(0)",
+        boxShadow: isHovered ? "var(--shadow-lg)" : "var(--shadow-sm)",
+        border: "1px solid var(--border-color)",
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div style={{
-        height: '160px',
-        background: getGradientBackground(),
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        color: '#ffffff'
-      }}>
-        <MusicIcon />
-      </div>
-      
-      <div style={{
-        padding: 'var(--space-lg)',
-        display: 'flex',
-        flexDirection: 'column',
-        flex: 1
-      }}>
-        <h3 style={{ 
-          marginBottom: 'var(--space-xs)', 
-          fontSize: '1.125rem',
-          fontWeight: 600,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap'
-        }}>
-          {song.title}
-        </h3>
-        
-        <p style={{ 
-          fontSize: '0.875rem', 
-          color: 'var(--text-secondary)', 
-          marginBottom: 'var(--space-md)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap'
-        }}>
-          {song.artist}
-        </p>
-        
-        <button 
-          onClick={handleLikeToggle}
-          disabled={isLoading}
-          aria-label={isLiked ? 'Unlike song' : 'Like song'}
+      <div
+        style={{
+          height: "160px",
+          backgroundColor: "#000",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative",
+        }}
+      >
+        <img
+          src={song.album_cover}
+          alt={`${song.title} cover`}
           style={{
-            backgroundColor: 'transparent',
-            border: 'none',
-            color: isLiked ? 'var(--primary-color)' : 'var(--text-secondary)',
-            fontSize: '24px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 'var(--space-sm)',
-            marginTop: 'auto',
-            borderRadius: 'var(--radius-pill)',
-            transition: 'all var(--transition-fast)',
-            opacity: isHovered || isLiked ? 1 : 0.7,
-            '&:hover': {
-              backgroundColor: 'rgba(255, 255, 255, 0.05)'
-            },
-            '&:disabled': {
-              opacity: 0.5,
-              cursor: 'not-allowed'
-            }
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
+        />
+      </div>
+
+      <div
+        style={{
+          padding: "var(--space-lg)",
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+        }}
+      >
+        <h3
+          style={{
+            marginBottom: "var(--space-xs)",
+            fontSize: "1.125rem",
+            fontWeight: 600,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
           }}
         >
-          <HeartIcon filled={isLiked} />
-        </button>
+          {song.title}
+        </h3>
+
+        <p
+          style={{
+            fontSize: "0.875rem",
+            color: "var(--text-secondary)",
+            marginBottom: "var(--space-md)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {song.artist_name}
+        </p>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: "auto",
+          }}
+        >
+          <button
+            onClick={handleLikeToggle}
+            disabled={isLoading}
+            aria-label={isLiked ? "Unlike song" : "Like song"}
+            style={{
+              backgroundColor: "transparent",
+              border: "none",
+              color: isLiked ? "var(--primary-color)" : "var(--text-secondary)",
+              fontSize: "24px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "var(--space-sm)",
+              borderRadius: "var(--radius-pill)",
+              transition: "all var(--transition-fast)",
+              opacity: isHovered || isLiked ? 1 : 0.7,
+            }}
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              strokeWidth="1.5"
+              stroke={isLiked ? "none" : "currentColor"}
+              fill={isLiked ? "var(--primary-color)" : "none"}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572" />
+            </svg>
+          </button>
+
+          <button
+            onClick={handleDelete}
+            style={{
+              fontSize: "0.8rem",
+              backgroundColor: "#ef4444",
+              color: "white",
+              border: "none",
+              borderRadius: "var(--radius-sm)",
+              padding: "4px 8px",
+              cursor: "pointer",
+            }}
+          >
+            Delete Artist
+          </button>
+        </div>
       </div>
     </div>
   );
