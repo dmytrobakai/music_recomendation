@@ -1,113 +1,124 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { useAuth } from "@/lib/auth-context";
-import styles from "./css/LoginForm.module.css";
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Input from '../ui/Input';
+import Button from '../ui/Button';
 
-export function LoginForm() {
-  const [username, setUsername] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const LoginForm: React.FC = () => {
+  const [username, setUsername] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!username.trim()) {
-      setError("Please enter a username");
+    if (!username) {
+      setError('Username is required');
       return;
     }
-    
-    setLoading(true);
-    setError(null);
-    
+
+    setIsLoading(true);
+    setError('');
+
     try {
-      // Call the login function from auth context which uses the API
-      const success = await login(username);
+      // Mock API call
+      const response = await fetch('http://localhost:8000/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username }),
+      });
+
+      const data = await response.json();
       
-      if (success) {
-        router.push("/dashboard");
+      if (response.ok) {
+        // In a real app, save token or session info here
+        localStorage.setItem('username', username);
+        router.push('/dashboard');
       } else {
-        setError("Login failed. Please try again.");
+        setError(data.detail || 'Something went wrong');
       }
     } catch (err) {
-      setError("Something went wrong. Please try again.");
+      console.error('Login error:', err);
+      setError('Failed to connect to server');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
+  // User icon for input
+  const userIcon = (
+    <svg 
+      width="18" 
+      height="18" 
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+      <circle cx="12" cy="7" r="4"></circle>
+    </svg>
+  );
+  
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>Sign in</h2>
-        <p className={styles.subtitle}>
-          Listen to your favorite music
-        </p>
-      </div>
-
-      {error && (
-        <div className={styles.errorContainer}>
-          <p className={styles.errorMessage}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.errorIcon}>
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-            {error}
-          </p>
-        </div>
-      )}
-
-      <div className={styles.formCard}>
-        <form className={styles.form} onSubmit={handleSubmit}>
-          <div className={styles.formGroup}>
-            <div className={styles.inputGroup}>
-              <label htmlFor="username" className={styles.label}>
-                Username
-              </label>
-              <Input
-                id="username"
-                name="username"
-                type="text"
-                required
-                placeholder="Enter your username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
-              />
-            </div>
-          </div>
-
-          <div className={styles.buttonContainer}>
-            <Button
-              type="submit"
-              disabled={loading}
-              className={styles.submitButton}
-              size="lg"
-            >
-              {loading ? (
-                <>
-                  <span className={styles.spinner}>⟳</span>
-                  Signing in...
-                </>
-              ) : (
-                "Sign in"
-              )}
-            </Button>
-          </div>
-
-          <div className={styles.signupContainer}>
-            <p className={styles.mockNote}>
-              This is a mock login - enter any username to access the dashboard.
-            </p>
-          </div>
-        </form>
-      </div>
+    <div className="slideUp" style={{
+      width: '100%',
+      maxWidth: '400px',
+      margin: '0 auto',
+      padding: 'var(--space-xxl) var(--space-lg)',
+      backgroundColor: 'var(--surface)',
+      borderRadius: 'var(--radius-lg)',
+      boxShadow: 'var(--shadow-lg)',
+      border: '1px solid var(--border-color)'
+    }}>
+      <h1 style={{ 
+        textAlign: 'center', 
+        marginBottom: 'var(--space-xl)', 
+        color: 'var(--primary-color)',
+        fontSize: '1.8rem'
+      }}>
+        Music Recommendation
+      </h1>
+      
+      <form onSubmit={handleSubmit}>
+        <Input
+          label="Username"
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="Enter your username"
+          fullWidth
+          error={error}
+          disabled={isLoading}
+          leftIcon={userIcon}
+          aria-label="Username"
+        />
+        
+        <Button 
+          type="submit" 
+          fullWidth 
+          disabled={isLoading}
+          size="lg"
+        >
+          {isLoading ? 'Logging in...' : 'Login / Register'}
+        </Button>
+      </form>
+      
+      <p style={{ 
+        textAlign: 'center', 
+        marginTop: 'var(--space-xl)', 
+        fontSize: '0.875rem', 
+        color: 'var(--text-secondary)' 
+      }}>
+        Enter any username to login or create account
+      </p>
     </div>
   );
-}
+};
+
+export default LoginForm;

@@ -1,102 +1,171 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { SearchBar } from "@/components/music/SearchBar";
-import { MusicList } from "@/components/music/MusicList";
-import { musicApi, transformSongToMusicItem, MusicItem } from "@/lib/api";
+import React, { useState } from 'react';
+import SearchBar from '@/components/music/SearchBar';
+import MusicList from '@/components/music/MusicList';
+
+interface Song {
+  id: number;
+  title: string;
+  artist: string;
+}
 
 export default function SearchPage() {
-  const [searchResults, setSearchResults] = useState<MusicItem[]>([]);
+  const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [likedSongIds, setLikedSongIds] = useState<Set<number>>(new Set());
-
-  // Get liked songs on initial load to know which results are already liked
-  useEffect(() => {
-    const fetchLikedSongs = async () => {
-      try {
-        const likedSongs = await musicApi.getLikedSongs();
-        setLikedSongIds(new Set(likedSongs.map(song => song.id)));
-      } catch (error) {
-        console.error("Failed to fetch liked songs:", error);
-      }
-    };
-    
-    fetchLikedSongs();
-  }, []);
+  const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleSearch = async (query: string) => {
     setLoading(true);
-    setHasSearched(true);
+    setError('');
+    setSearchQuery(query);
     
     try {
-      // Search songs through API
-      const results = await musicApi.searchSongs(query);
-      
-      // Transform to UI format and mark as liked if necessary
-      const musicItems = results.map(song => 
-        transformSongToMusicItem(song, likedSongIds.has(song.id))
-      );
-      
-      setSearchResults(musicItems);
-    } catch (error) {
-      console.error("Search failed:", error);
-      setSearchResults([]);
+      const response = await fetch(`http://localhost:8000/search?query=${encodeURIComponent(query)}`);
+      const data = await response.json();
+      setSearchResults(data);
+      setHasSearched(true);
+    } catch (err) {
+      console.error('Search error:', err);
+      setError('Failed to perform search. Please try again.');
     } finally {
       setLoading(false);
     }
   };
   
-  const handleLikeToggle = async (id: string, liked: boolean) => {
-    const songId = parseInt(id);
-    
-    try {
-      if (liked) {
-        await musicApi.likeSong(songId);
-        setLikedSongIds(prev => new Set(prev).add(songId));
-      } else {
-        await musicApi.unlikeSong(songId);
-        const newLikedIds = new Set(likedSongIds);
-        newLikedIds.delete(songId);
-        setLikedSongIds(newLikedIds);
-      }
-      
-      // Update UI state
-      setSearchResults(prev =>
-        prev.map(item => 
-          item.id === id ? { ...item, isLiked: liked } : item
-        )
-      );
-    } catch (error) {
-      console.error("Failed to update like status:", error);
-    }
-  };
-
   return (
-    <div>
-      <div className="mb-10">
-        <h1 className="text-2xl font-bold mb-6">Search Music</h1>
-        <SearchBar onSearch={handleSearch} />
-      </div>
-
-      {hasSearched && (
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4">Search Results</h2>
-          {loading ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">Searching...</p>
+    <div className="container slideUp" style={{ padding: 'var(--space-xl) var(--space-md)' }}>
+      <header style={{ marginBottom: 'var(--space-xl)' }}>
+        <h1 style={{ fontSize: '2rem', fontWeight: 700 }}>Search Music</h1>
+        <p style={{ color: 'var(--text-secondary)' }}>
+          Find songs by title or artist name
+        </p>
+      </header>
+      
+      <SearchBar onSearch={handleSearch} isLoading={loading} />
+      
+      {error && (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: 'var(--space-lg)', 
+          backgroundColor: 'rgba(255, 0, 0, 0.05)', 
+          borderRadius: 'var(--radius-lg)',
+          color: 'var(--error)',
+          marginBottom: 'var(--space-xl)'
+        }}>
+          <p>{error}</p>
+        </div>
+      )}
+      
+      {loading && (
+        <div style={{ textAlign: 'center', padding: 'var(--space-xl)' }}>
+          <LoadingSpinner />
+          <p style={{ marginTop: 'var(--space-md)', color: 'var(--text-secondary)' }}>Searching...</p>
+        </div>
+      )}
+      
+      {!loading && hasSearched && (
+        <div className="fadeIn">
+          {searchResults.length === 0 ? (
+            <div style={{ 
+              backgroundColor: 'var(--surface)',
+              padding: 'var(--space-xl)',
+              borderRadius: 'var(--radius-lg)',
+              textAlign: 'center',
+              border: '1px solid var(--border-color)'
+            }}>
+              <NoResultsIcon />
+              <p style={{ color: 'var(--text-secondary)', marginTop: 'var(--space-md)' }}>
+                No songs found matching <strong>"{searchQuery}"</strong>
+              </p>
             </div>
           ) : (
-            <MusicList items={searchResults} onLikeToggle={handleLikeToggle} />
+            <MusicList 
+              title={`Search Results for "${searchQuery}"`} 
+              songs={searchResults} 
+            />
           )}
         </div>
       )}
-
-      {!hasSearched && (
-        <div className="mt-8 text-center py-12">
-          <p className="text-gray-500">Search for your favorite songs, artists, or genres above!</p>
+      
+      {!loading && !hasSearched && (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: 'var(--space-xxl)', 
+          color: 'var(--text-secondary)',
+          backgroundColor: 'var(--surface)',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid var(--border-color)'
+        }}>
+          <SearchIcon />
+          <p style={{ marginTop: 'var(--space-md)' }}>Enter a search term to find songs</p>
         </div>
       )}
     </div>
+  );
+}
+
+function LoadingSpinner() {
+  return (
+    <div style={{ display: 'inline-block' }}>
+      <svg 
+        width="40" 
+        height="40" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+        style={{ 
+          animation: 'spin 1s linear infinite',
+          '@keyframes spin': {
+            '0%': { transform: 'rotate(0deg)' },
+            '100%': { transform: 'rotate(360deg)' },
+          }
+        }}
+      >
+        <circle cx="12" cy="12" r="10" opacity="0.2" />
+        <path d="M12 2a10 10 0 0 1 10 10" />
+      </svg>
+    </div>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg 
+      width="48" 
+      height="48" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="1.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+
+function NoResultsIcon() {
+  return (
+    <svg 
+      width="48" 
+      height="48" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="1.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="8" y1="12" x2="16" y2="12" />
+    </svg>
   );
 }

@@ -1,88 +1,154 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { MusicList } from "@/components/music/MusicList";
-import { musicApi, transformSongToMusicItem, MusicItem } from "@/lib/api";
-import { useAuth } from "@/lib/auth-context";
+import React, { useEffect, useState } from 'react';
+import MusicList from '@/components/music/MusicList';
 
-export default function DashboardPage() {
-  const [recommendations, setRecommendations] = useState<MusicItem[]>([]);
+interface Song {
+  id: number;
+  title: string;
+  artist: string;
+}
+
+export default function Dashboard() {
+  const [recommendedSongs, setRecommendedSongs] = useState<Song[]>([]);
+  const [allSongs, setAllSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
-  
-  // Load recommendations from API
+  const [error, setError] = useState('');
+  const [username, setUsername] = useState('');
+
   useEffect(() => {
-    const fetchRecommendations = async () => {
+    if (typeof window !== 'undefined') {
+      setUsername(localStorage.getItem('username') || '');
+    }
+    
+    const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch liked songs to know which ones are already liked
-        const likedSongs = await musicApi.getLikedSongs();
-        const likedIds = new Set(likedSongs.map(song => song.id));
+        // Fetch recommended songs and all songs in parallel
+        const [recommendedResponse, allSongsResponse] = await Promise.all([
+          fetch('http://localhost:8000/recommended'),
+          fetch('http://localhost:8000/songs')
+        ]);
         
-        // Fetch recommended songs
-        const recommendedSongs = await musicApi.getRecommendedSongs();
+        const recommendedData = await recommendedResponse.json();
+        const allSongsData = await allSongsResponse.json();
         
-        // Transform API songs to UI MusicItems, marking as liked if needed
-        const musicItems = recommendedSongs.map(song => 
-          transformSongToMusicItem(song, likedIds.has(song.id))
-        );
-        
-        setRecommendations(musicItems);
-      } catch (error) {
-        console.error("Failed to fetch recommendations:", error);
+        setRecommendedSongs(recommendedData);
+        setAllSongs(allSongsData);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('Failed to load music data. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
     
-    fetchRecommendations();
+    fetchData();
   }, []);
-
-  const handleLikeToggle = async (id: string, liked: boolean) => {
-    const songId = parseInt(id);
-    
-    try {
-      if (liked) {
-        await musicApi.likeSong(songId);
-      } else {
-        await musicApi.unlikeSong(songId);
-      }
-      
-      // Update UI state
-      setRecommendations(prev =>
-        prev.map(item => 
-          item.id === id ? { ...item, isLiked: liked } : item
-        )
-      );
-    } catch (error) {
-      console.error("Failed to update like status:", error);
-    }
-  };
-
+  
+  if (loading) {
+    return (
+      <div className="container" style={{ padding: 'var(--space-xl) var(--space-md)' }}>
+        <div style={{ 
+          textAlign: 'center', 
+          padding: 'var(--space-xxl)', 
+          color: 'var(--text-secondary)' 
+        }}>
+          <LoadingSpinner />
+          <p style={{ marginTop: 'var(--space-lg)' }}>Loading your music recommendations...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="container" style={{ padding: 'var(--space-xl) var(--space-md)' }}>
+        <div style={{ 
+          textAlign: 'center', 
+          padding: 'var(--space-xxl)', 
+          color: 'var(--error)' 
+        }}>
+          <ErrorIcon />
+          <p style={{ marginTop: 'var(--space-lg)' }}>{error}</p>
+        </div>
+      </div>
+    );
+  }
+  
   return (
-    <div>
-      <div className="mb-10">
-        <h1 className="text-2xl font-bold mb-6">Welcome Back!</h1>
-        <p className="text-gray-600">
-          Here are some personalized recommendations for you.
+    <div className="container slideUp" style={{ padding: 'var(--space-xl) var(--space-md)' }}>
+      <header style={{ marginBottom: 'var(--space-xl)' }}>
+        <h1 style={{ 
+          fontSize: '2rem', 
+          fontWeight: 700,
+          background: 'linear-gradient(to right, var(--primary-color), #4ade80)', 
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+        }}>
+          {username ? `Welcome, ${username}` : 'Discover Music'}
+        </h1>
+        
+        <p style={{ color: 'var(--text-secondary)' }}>
+          Explore new music and find your next favorite songs.
         </p>
-      </div>
-
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-4">Recommended for You</h2>
-        {loading ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">Loading recommendations...</p>
-          </div>
-        ) : (
-          <MusicList items={recommendations} onLikeToggle={handleLikeToggle} />
-        )}
-      </div>
-
-      <div className="mt-12">
-        <h2 className="text-xl font-semibold mb-4">Recently Played</h2>
-        <p className="text-gray-500">No recent activity. Start playing some music!</p>
-      </div>
+      </header>
+      
+      {recommendedSongs.length > 0 && (
+        <MusicList 
+          title="Recommended for You" 
+          songs={recommendedSongs}
+          emptyMessage="No recommendations available yet. Try liking some songs first!"
+        />
+      )}
+      
+      <MusicList title="All Songs" songs={allSongs} />
     </div>
+  );
+}
+
+function LoadingSpinner() {
+  return (
+    <div style={{ display: 'inline-block' }}>
+      <svg 
+        width="40" 
+        height="40" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+        style={{ 
+          animation: 'spin 1s linear infinite',
+          '@keyframes spin': {
+            '0%': { transform: 'rotate(0deg)' },
+            '100%': { transform: 'rotate(360deg)' },
+          }
+        }}
+      >
+        <circle cx="12" cy="12" r="10" opacity="0.2" />
+        <path d="M12 2a10 10 0 0 1 10 10" />
+      </svg>
+    </div>
+  );
+}
+
+function ErrorIcon() {
+  return (
+    <svg 
+      width="40" 
+      height="40" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
   );
 }

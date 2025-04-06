@@ -1,65 +1,79 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import styles from "./css/SearchBar.module.css";
-import { cn } from "@/lib/utils";
+import React, { useState } from 'react';
+import Input from '../ui/Input';
+import Button from '../ui/Button';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
-  loading?: boolean;
+  isLoading?: boolean;
 }
 
-export function SearchBar({ onSearch, loading = false }: SearchBarProps) {
-  const [query, setQuery] = useState("");
-
+const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isLoading = false }) => {
+  const [query, setQuery] = useState('');
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
       onSearch(query.trim());
     }
   };
-
-  return (
-    <form onSubmit={handleSubmit} className={styles.form}>
-      <div className={styles.inputWrapper}>
-        <Input
-          type="text"
-          placeholder="Search for songs, artists, or albums..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className={styles.input}
-          disabled={loading}
-          aria-label="Search query"
-        />
-      </div>
-      <Button 
-        type="submit" 
-        className={styles.button} 
-        disabled={loading || !query.trim()}
-        aria-label="Search"
-      >
-        {loading ? (
-          <span className={styles.spinner}>⟳</span>
-        ) : (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className={styles.icon}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-        )}
-        <span className={styles.searchText}>Search</span>
-      </Button>
-    </form>
+  
+  // Search icon
+  const searchIcon = (
+    <svg 
+      width="18" 
+      height="18" 
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
   );
-}
+  
+  return (
+    <div className="fadeIn" style={{
+      marginBottom: 'var(--space-xl)',
+    }}>
+      <form 
+        onSubmit={handleSubmit}
+        style={{
+          display: 'flex',
+          maxWidth: '700px',
+          margin: '0 auto',
+          gap: 'var(--space-md)',
+          width: '100%',
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <Input
+            type="text"
+            placeholder="Search for songs or artists..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            fullWidth
+            disabled={isLoading}
+            leftIcon={searchIcon}
+            aria-label="Search query"
+          />
+        </div>
+        
+        <Button 
+          type="submit" 
+          disabled={!query.trim() || isLoading}
+          variant="primary"
+          size="md"
+        >
+          {isLoading ? 'Searching...' : 'Search'}
+        </Button>
+      </form>
+    </div>
+  );
+};
+
+export default SearchBar;

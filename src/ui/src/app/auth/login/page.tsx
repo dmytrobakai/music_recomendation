@@ -1,8 +1,17 @@
-import { LoginForm } from "@/components/auth/LoginForm";
+'use client';
 
-export default function LoginPage() {
+import LoginForm from '@/components/auth/LoginForm';
+
+export default function Login() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: '100vh',
+      background: 'linear-gradient(130deg, #120e29, #1e1e1e)',
+      padding: 'var(--space-md)'
+    }}>
       <LoginForm />
     </div>
   );

@@ -1,37 +1,128 @@
-import { MusicCard } from "./MusicCard";
-import { cn } from "@/lib/utils";
-import { MusicItem } from "@/lib/api";
-import styles from "./css/MusicList.module.css";
+'use client';
 
-interface MusicListProps {
-  items: MusicItem[];
-  onLikeToggle?: (id: string, liked: boolean) => void;
-  className?: string;
+import React, { useState, useEffect } from 'react';
+import MusicCard from './MusicCard';
+
+interface Song {
+  id: number;
+  title: string;
+  artist: string;
 }
 
-export function MusicList({ items, onLikeToggle, className }: MusicListProps) {
-  if (items.length === 0) {
+interface MusicListProps {
+  songs: Song[];
+  title: string;
+  emptyMessage?: string;
+}
+
+const MusicList: React.FC<MusicListProps> = ({ songs, title, emptyMessage = 'No songs found.' }) => {
+  const [likedSongs, setLikedSongs] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Load liked songs on component mount
+  useEffect(() => {
+    const fetchLikedSongs = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/liked');
+        if (response.ok) {
+          const data = await response.json();
+          setLikedSongs(data.map((song: Song) => song.id));
+        }
+      } catch (error) {
+        console.error('Error fetching liked songs:', error);
+      }
+    };
+    
+    fetchLikedSongs();
+  }, []);
+  
+  const handleLike = async (id: number) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`http://localhost:8000/like/${id}`, {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        setLikedSongs(prev => [...prev, id]);
+      }
+    } catch (error) {
+      console.error('Error liking song:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleUnlike = async (id: number) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`http://localhost:8000/unlike/${id}`, {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        setLikedSongs(prev => prev.filter(songId => songId !== id));
+      }
+    } catch (error) {
+      console.error('Error unliking song:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // If no songs are provided, show a message
+  if (songs.length === 0) {
     return (
-      <div className={styles.emptyState}>
-        <p className={styles.emptyStateText}>No music found.</p>
+      <div style={{ marginBottom: 'var(--space-xxl)' }}>
+        <h2 style={{ 
+          marginBottom: 'var(--space-lg)',
+          fontSize: '1.5rem',
+          fontWeight: 600,
+        }}>
+          {title}
+        </h2>
+        
+        <div style={{ 
+          backgroundColor: 'var(--surface)',
+          padding: 'var(--space-xl)',
+          borderRadius: 'var(--radius-lg)',
+          textAlign: 'center',
+          color: 'var(--text-secondary)',
+          border: '1px solid var(--border-color)'
+        }}>
+          <p>{emptyMessage}</p>
+        </div>
       </div>
     );
   }
-
+  
   return (
-    <div className={cn(styles.grid, className)}>
-      {items.map((item) => (
-        <MusicCard
-          key={item.id}
-          id={item.id}
-          title={item.title}
-          artist={item.artist}
-          album={item.album}
-          coverImage={item.coverImage}
-          isLiked={item.isLiked}
-          onLikeToggle={onLikeToggle}
-        />
-      ))}
+    <div style={{ marginBottom: 'var(--space-xxl)' }}>
+      <h2 style={{ 
+        marginBottom: 'var(--space-lg)',
+        fontSize: '1.5rem',
+        fontWeight: 600,
+      }}>
+        {title}
+      </h2>
+      
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+        gap: 'var(--space-lg)'
+      }}>
+        {songs.map(song => (
+          <MusicCard
+            key={song.id}
+            song={song}
+            isLiked={likedSongs.includes(song.id)}
+            onLike={handleLike}
+            onUnlike={handleUnlike}
+          />
+        ))}
+      </div>
     </div>
   );
-}
+};
+
+export default MusicList;

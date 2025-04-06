@@ -1,111 +1,171 @@
-"use client";
+import React, { useState } from 'react';
 
-import { useState } from "react";
-import { cn } from "@/lib/utils";
-import styles from "./css/MusicCard.module.css";
-
-interface MusicCardProps {
-  id: string;
+interface Song {
+  id: number;
   title: string;
   artist: string;
-  album?: string;
-  coverImage: string;
-  isLiked?: boolean;
-  onLikeToggle?: (id: string, liked: boolean) => void;
 }
 
-export function MusicCard({
-  id,
-  title,
-  artist,
-  album,
-  coverImage,
-  isLiked = false,
-  onLikeToggle,
-}: MusicCardProps) {
-  const [liked, setLiked] = useState(isLiked);
+interface MusicCardProps {
+  song: Song;
+  isLiked: boolean;
+  onLike: (id: number) => void;
+  onUnlike: (id: number) => void;
+}
+
+const MusicCard: React.FC<MusicCardProps> = ({ song, isLiked, onLike, onUnlike }) => {
+  const [isLoading, setIsLoading] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
-  const handleLikeClick = () => {
-    const newLikedState = !liked;
-    setLiked(newLikedState);
-    if (onLikeToggle) {
-      onLikeToggle(id, newLikedState);
+  const handleLikeToggle = async () => {
+    setIsLoading(true);
+    try {
+      if (isLiked) {
+        await onUnlike(song.id);
+      } else {
+        await onLike(song.id);
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
+  
+  // Generate a random color for the background
+  const getGradientBackground = () => {
+    const gradients = [
+      'linear-gradient(135deg, #4F46E5, #7C3AED)',  // purple
+      'linear-gradient(135deg, #0284C7, #0EA5E9)',  // blue
+      'linear-gradient(135deg, #16A34A, #22C55E)',  // green
+      'linear-gradient(135deg, #EA580C, #F97316)',  // orange
+      'linear-gradient(135deg, #BE123C, #F43F5E)',  // red
+    ];
+    return gradients[song.id % gradients.length];
+  };
+  
+  // Music note icon
+  const MusicIcon = () => (
+    <svg 
+      width="32" 
+      height="32" 
+      viewBox="0 0 24 24"
+      strokeWidth="1.5"
+      stroke="currentColor"
+      fill="none" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      <path d="M9 18v-13l12-2v13" />
+      <path d="M9 18c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z" />
+      <path d="M21 16c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z" />
+    </svg>
+  );
 
+  // Heart/Like icon
+  const HeartIcon = ({ filled }: { filled: boolean }) => (
+    <svg 
+      width="24" 
+      height="24" 
+      viewBox="0 0 24 24"
+      strokeWidth="1.5"
+      stroke={filled ? 'none' : 'currentColor'}
+      fill={filled ? 'var(--primary-color)' : 'none'}
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      <path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572" />
+    </svg>
+  );
+  
   return (
     <div 
-      className={styles.card}
+      className="slideUp"
+      style={{
+        backgroundColor: 'var(--surface)',
+        borderRadius: 'var(--radius-lg)',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        transition: 'transform var(--transition-default), box-shadow var(--transition-default)',
+        transform: isHovered ? 'translateY(-5px)' : 'translateY(0)',
+        boxShadow: isHovered ? 'var(--shadow-lg)' : 'var(--shadow-sm)',
+        border: '1px solid var(--border-color)'
+      }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className={styles.imageContainer}>
-        <img
-          src={coverImage}
-          alt={`${title} by ${artist}`}
-          className={styles.image}
-        />
-        <div className={cn(
-          styles.overlay,
-          isHovered ? styles.overlay : null
-        )}>
-          <button
-            aria-label="Play"
-            className={styles.playButton}
-            onClick={() => console.log(`Play ${title}`)}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
-          </button>
-        </div>
+      <div style={{
+        height: '160px',
+        background: getGradientBackground(),
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        color: '#ffffff'
+      }}>
+        <MusicIcon />
       </div>
-
-      <div className={styles.content}>
-        <div className={styles.header}>
-          <div className={styles.info}>
-            <h3 className={styles.title}>{title}</h3>
-            <p className={styles.artist}>{artist}</p>
-            {album && <p className={styles.album}>{album}</p>}
-          </div>
-          <button
-            className={styles.likeButton}
-            onClick={handleLikeClick}
-            aria-label={liked ? "Unlike" : "Like"}
-          >
-            {liked ? (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className={styles.likedIcon}
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className={styles.unlikedIcon}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                />
-              </svg>
-            )}
-          </button>
-        </div>
+      
+      <div style={{
+        padding: 'var(--space-lg)',
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1
+      }}>
+        <h3 style={{ 
+          marginBottom: 'var(--space-xs)', 
+          fontSize: '1.125rem',
+          fontWeight: 600,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}>
+          {song.title}
+        </h3>
+        
+        <p style={{ 
+          fontSize: '0.875rem', 
+          color: 'var(--text-secondary)', 
+          marginBottom: 'var(--space-md)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}>
+          {song.artist}
+        </p>
+        
+        <button 
+          onClick={handleLikeToggle}
+          disabled={isLoading}
+          aria-label={isLiked ? 'Unlike song' : 'Like song'}
+          style={{
+            backgroundColor: 'transparent',
+            border: 'none',
+            color: isLiked ? 'var(--primary-color)' : 'var(--text-secondary)',
+            fontSize: '24px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 'var(--space-sm)',
+            marginTop: 'auto',
+            borderRadius: 'var(--radius-pill)',
+            transition: 'all var(--transition-fast)',
+            opacity: isHovered || isLiked ? 1 : 0.7,
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.05)'
+            },
+            '&:disabled': {
+              opacity: 0.5,
+              cursor: 'not-allowed'
+            }
+          }}
+        >
+          <HeartIcon filled={isLiked} />
+        </button>
       </div>
     </div>
   );
-}
+};
+
+export default MusicCard;
