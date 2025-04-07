@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./src/api
+    container_name: music-api
+    volumes:
+      - ./src/api:/app
+    ports:
+      - "8000:8000"
+    working_dir: /app
+    command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./src/ui
+    container_name: music-ui
+    volumes:
+      - ./src/ui:/app
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    working_dir: /app
+    command: npm run dev
+    depends_on:
+      - backend

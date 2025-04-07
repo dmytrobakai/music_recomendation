@@ -35,6 +35,15 @@ class SongList(BaseModel):
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL
+        )
+    ''')
+
+    # Створити таблицю лайків
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS user_likes (
             username TEXT,
@@ -42,15 +51,43 @@ def init_db():
             PRIMARY KEY (username, song_id)
         )
     ''')
+
     conn.commit()
     conn.close()
 
-init_db()
 
-@app.post("/login", tags=["Auth"])
-def login(user: User):
-    """Login or register a user (no-op since it's mock)"""
-    return {"message": "Login successful", "username": user.username}
+init_db()
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+from pydantic import BaseModel
+
+class LoginRequest(BaseModel):
+    username: str
+
+@app.post("/login")
+def login(data: LoginRequest):
+    username = data.username
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+    user = cursor.fetchone()
+
+    if user:
+        conn.close()
+        return {"message": f"Welcome back, {username}!"}
+    
+    try:
+        cursor.execute("INSERT INTO users (username) VALUES (?)", (username,))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.close()
+        raise HTTPException(status_code=500, detail="Error creating user")
+
+    conn.close()
+    return {"message": f"New user created: {username}"}
 
 @app.get("/songs", tags=["Songs"])
 def list_all_songs():
@@ -139,3 +176,49 @@ def delete_artist_and_songs(artist_id: int):
     conn.close()
     return {"message": f"Artist {artist_id} and all their songs removed."}
 
+def jaccard_similarity(set1, set2):
+    intersection = len(set1 & set2)
+    union = len(set1 | set2)
+    return intersection / union if union != 0 else 0
+
+@app.get("/recommendations/{username}")
+def recommend_songs(username: str, top_n: int = 5):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT username, song_id FROM user_likes")
+    likes_data = cursor.fetchall()
+
+    # 2. Побудувати user -> set(song_id)
+    user_likes = defaultdict(set)
+    for row in likes_data:
+        user_likes[row['username']].add(row['song_id'])
+
+    if username not in user_likes:
+        raise HTTPException(status_code=404, detail="User not found or no likes yet.")
+
+    target_likes = user_likes[username]
+    scores = defaultdict(float)
+
+    # 3. Порівняння з іншими користувачами
+    for other_user, other_likes in user_likes.items():
+        if other_user == username:
+            continue
+        similarity = jaccard_similarity(target_likes, other_likes)
+        for song_id in other_likes - target_likes:
+            scores[song_id] += similarity
+
+    # 4. Top-N результат
+    sorted_scores = sorted(scores.items(), key=lambda x: -x[1])
+    top_song_ids = [song_id for song_id, _ in sorted_scores[:top_n]]
+
+    if not top_song_ids:
+        return []
+
+    # 5. Отримати інформацію про треки
+    placeholders = ','.join('?' * len(top_song_ids))
+    cursor.execute(f"SELECT id, title, artist FROM songs WHERE id IN ({placeholders})", top_song_ids)
+    recommended = cursor.fetchall()
+
+    conn.close()
+    return [dict(song) for song in recommended]

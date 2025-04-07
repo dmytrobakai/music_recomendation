@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Input from '../ui/Input';
+
 import Button from '../ui/Button';
+import Input from '../ui/Input';
+import { useRouter } from 'next/navigation';
 
 const LoginForm: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -93,7 +94,6 @@ const LoginForm: React.FC = () => {
           onChange={(e) => setUsername(e.target.value)}
           placeholder="Enter your username"
           fullWidth
-          error={error}
           disabled={isLoading}
           leftIcon={userIcon}
           aria-label="Username"
