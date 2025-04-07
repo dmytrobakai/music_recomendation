@@ -4,6 +4,7 @@ from typing import List
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 import random
+from collections import defaultdict
 
 app = FastAPI(
     title="MusicApp API",
@@ -217,7 +218,7 @@ def recommend_songs(username: str, top_n: int = 5):
 
     # 5. Отримати інформацію про треки
     placeholders = ','.join('?' * len(top_song_ids))
-    cursor.execute(f"SELECT id, title, artist FROM songs WHERE id IN ({placeholders})", top_song_ids)
+    cursor.execute(f"SELECT * FROM tracks WHERE id IN ({placeholders})", top_song_ids)
     recommended = cursor.fetchall()
 
     conn.close()
