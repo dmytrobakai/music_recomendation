@@ -1,82 +1,110 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import Button from '../ui/Button';
+import { usePathname, useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+
+import Link from "next/link";
+import Button from "../ui/Button";
 
 const Navbar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
-  
+  const [username, setUsername] = useState("User");
+
+  useEffect(() => {
+    const storedUsername = localStorage.getItem("username");
+    if (storedUsername) {
+      setUsername(storedUsername);
+    }
+  }, []);
+
   const navLinks = [
-    { name: 'Discover', path: '/dashboard', icon: DiscoverIcon },
-    { name: 'Search', path: '/dashboard/search', icon: SearchIcon },
-    { name: 'Liked Songs', path: '/dashboard/liked', icon: HeartIcon },
+    { name: "Discover", path: "/dashboard", icon: DiscoverIcon },
+    { name: "Search", path: "/dashboard/search", icon: SearchIcon },
+    { name: "Liked Songs", path: "/dashboard/liked", icon: HeartIcon },
   ];
 
   const handleLogout = () => {
-    // In a real app, clear tokens/session
-    localStorage.removeItem('username');
-    router.push('/auth/login');
+    localStorage.removeItem("username");
+    router.push("/auth/login");
   };
 
   return (
-    <nav style={{
-      backgroundColor: 'rgba(18, 18, 18, 0.9)',
-      backdropFilter: 'blur(10px)',
-      padding: 'var(--space-md) var(--space-xl)',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      position: 'sticky',
-      top: 0,
-      zIndex: 10,
-      boxShadow: 'var(--shadow-sm)',
-      borderBottom: '1px solid var(--border-color)'
-    }}>
-      <div style={{ display: 'flex', gap: 'var(--space-xl)', alignItems: 'center' }}>
-        <h2 style={{ 
-          color: 'var(--primary-color)', 
-          fontSize: '1.25rem',
-          fontWeight: '700',
-        }}>
+    <nav
+      style={{
+        backgroundColor: "rgba(18, 18, 18, 0.9)",
+        backdropFilter: "blur(10px)",
+        padding: "var(--space-md) var(--space-xl)",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        position: "sticky",
+        top: 0,
+        zIndex: 10,
+        boxShadow: "var(--shadow-sm)",
+        borderBottom: "1px solid var(--border-color)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          gap: "var(--space-xl)",
+          alignItems: "center",
+        }}
+      >
+        <h2
+          style={{
+            color: "var(--primary-color)",
+            fontSize: "1.25rem",
+            fontWeight: "700",
+          }}
+        >
           MusicApp
         </h2>
-        
-        <div style={{ display: 'flex', gap: 'var(--space-lg)' }}>
+
+        <div style={{ display: "flex", gap: "var(--space-lg)" }}>
           {navLinks.map((link) => {
             const isActive = pathname === link.path;
             return (
               <Link key={link.path} href={link.path}>
-                <div style={{
-                  color: isActive ? 'var(--primary-color)' : 'var(--text-primary)',
-                  fontWeight: isActive ? '600' : '500',
-                  padding: 'var(--space-sm) var(--space-sm)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-sm)',
-                  position: 'relative',
-                  transition: 'all var(--transition-fast)',
-                }}>
-                  <span style={{ 
-                    display: 'flex',
-                    color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)'
-                  }}>
+                <div
+                  style={{
+                    color: isActive
+                      ? "var(--primary-color)"
+                      : "var(--text-primary)",
+                    fontWeight: isActive ? "600" : "500",
+                    padding: "var(--space-sm) var(--space-sm)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "var(--space-sm)",
+                    position: "relative",
+                    transition: "all var(--transition-fast)",
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "flex",
+                      color: isActive
+                        ? "var(--primary-color)"
+                        : "var(--text-secondary)",
+                    }}
+                  >
                     {link.icon()}
                   </span>
                   <span>{link.name}</span>
-                  
+
                   {isActive && (
-                    <span style={{
-                      position: 'absolute',
-                      bottom: '-2px',
-                      left: 0,
-                      width: '100%',
-                      height: '2px',
-                      backgroundColor: 'var(--primary-color)',
-                      borderRadius: 'var(--radius-pill)',
-                    }} />
+                    <span
+                      style={{
+                        position: "absolute",
+                        bottom: "-2px",
+                        left: 0,
+                        width: "100%",
+                        height: "2px",
+                        backgroundColor: "var(--primary-color)",
+                        borderRadius: "var(--radius-pill)",
+                      }}
+                    />
                   )}
                 </div>
               </Link>
@@ -85,26 +113,41 @@ const Navbar: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 'var(--space-sm)',
-          backgroundColor: 'var(--surface-light)',
-          padding: 'var(--space-sm) var(--space-md)',
-          borderRadius: 'var(--radius-pill)',
-        }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "var(--space-md)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--space-sm)",
+            backgroundColor: "var(--surface-light)",
+            padding: "var(--space-sm) var(--space-md)",
+            borderRadius: "var(--radius-pill)",
+          }}
+        >
           <UserIcon />
-          <span style={{ 
-            fontSize: '0.875rem', 
-            color: 'var(--text-secondary)',
-            fontWeight: '500',
-          }}>
-            {typeof window !== 'undefined' ? localStorage.getItem('username') : 'User'}
+          <span
+            style={{
+              fontSize: "0.875rem",
+              color: "var(--text-secondary)",
+              fontWeight: "500",
+            }}
+          >
+            {username}
           </span>
         </div>
-        
-        <Button variant="outline" size="sm" onClick={handleLogout} icon={<LogoutIcon />}>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleLogout}
+          icon={<LogoutIcon />}
+        >
           Logout
         </Button>
       </div>
@@ -115,14 +158,14 @@ const Navbar: React.FC = () => {
 // Icon components
 function DiscoverIcon() {
   return (
-    <svg 
-      width="18" 
-      height="18" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
       strokeLinejoin="round"
     >
       <circle cx="12" cy="12" r="10" />
@@ -133,14 +176,14 @@ function DiscoverIcon() {
 
 function SearchIcon() {
   return (
-    <svg 
-      width="18" 
-      height="18" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
       strokeLinejoin="round"
     >
       <circle cx="11" cy="11" r="8" />
@@ -151,31 +194,34 @@ function SearchIcon() {
 
 function HeartIcon() {
   return (
-    <svg 
-      width="18" 
-      height="18" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+      <path
+        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 
+      1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+      />
     </svg>
   );
 }
 
 function UserIcon() {
   return (
-    <svg 
-      width="18" 
-      height="18" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
       strokeLinejoin="round"
     >
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -186,14 +232,14 @@ function UserIcon() {
 
 function LogoutIcon() {
   return (
-    <svg 
-      width="18" 
-      height="18" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
       strokeLinejoin="round"
     >
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
