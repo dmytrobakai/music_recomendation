@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+torch
+numpy
+google-cloud-storage
+sqlalchemy
+psycopg2-binary
