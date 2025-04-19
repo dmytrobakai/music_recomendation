@@ -2,13 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 
+import { Song } from "@/types/song";
 import MusicCard from "./MusicCard";
 
-interface Song {
-  id: number;
-  title: string;
-  artist: string;
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 interface MusicListProps {
   songs: Song[];
@@ -29,7 +26,7 @@ const MusicList: React.FC<MusicListProps> = ({
   useEffect(() => {
     const fetchLikedSongs = async () => {
       try {
-        const response = await fetch("http://localhost:8000/liked/" + user);
+        const response = await fetch(`${API_URL}/liked/` + user);
         if (response.ok) {
           const data = await response.json();
           setLikedSongs(data.map((song: Song) => song.id));
@@ -45,12 +42,9 @@ const MusicList: React.FC<MusicListProps> = ({
   const handleLike = async (id: number) => {
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `http://localhost:8000/like/${id}/user/${user}`,
-        {
-          method: "POST",
-        }
-      );
+      const response = await fetch(`${API_URL}/like/${id}/user/${user}`, {
+        method: "POST",
+      });
 
       if (response.ok) {
         setLikedSongs((prev) => [...prev, id]);
@@ -65,12 +59,9 @@ const MusicList: React.FC<MusicListProps> = ({
   const handleUnlike = async (id: number) => {
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `http://localhost:8000/unlike/${id}/user/${user}`,
-        {
-          method: "POST",
-        }
-      );
+      const response = await fetch(`${API_URL}/unlike/${id}/user/${user}`, {
+        method: "POST",
+      });
 
       if (response.ok) {
         setLikedSongs((prev) => prev.filter((songId) => songId !== id));
@@ -84,7 +75,7 @@ const MusicList: React.FC<MusicListProps> = ({
 
   const handleDeleteArtist = async (artistId: number) => {
     try {
-      const res = await fetch(`http://localhost:8000/artist/${artistId}`, {
+      const res = await fetch(`${API_URL}/artist/${artistId}`, {
         method: "DELETE",
       });
 

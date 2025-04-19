@@ -25,7 +25,6 @@ npm install
 npm run dev
 ```
 
-3. Make sure the backend API is running at http://localhost:8000
 
 ## API Integration
 

@@ -3,20 +3,19 @@
 import { useEffect, useState } from "react";
 
 import MusicList from "@/components/music/MusicList";
-
-interface Song {
-  id: number;
-  title: string;
-  artist: string;
-}
+import { Song } from "@/types/song";
 
 export default function Dashboard() {
   const [recommendedSongs, setRecommendedSongs] = useState<Song[]>([]);
+  const [mlRecommendedSongs, setMlRecommendedSongs] = useState<Song[]>([]);
+
   const [allSongs, setAllSongs] = useState<Song[]>([]);
   const [userBasedSongs, setUserBasedSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [username, setUsername] = useState("");
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
     const storedUsername = localStorage.getItem("username") || "";
@@ -25,13 +24,15 @@ export default function Dashboard() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [allSongsRes, userBasedRes] = await Promise.all([
-          fetch("http://localhost:8000/songs"),
-          fetch(`http://localhost:8000/recommendations/${storedUsername}`),
+        const [allSongsRes, userBasedRes, mlBasedSongs] = await Promise.all([
+          fetch(`${API_URL}/songs`),
+          fetch(`${API_URL}/recommendations/${storedUsername}`),
+          fetch(`${API_URL}/ml-recommendations/${storedUsername}`),
         ]);
 
         const allSongsData = await allSongsRes.json();
         const userBasedData = await userBasedRes.json();
+        const mlBasedData = await mlBasedSongs.json();
 
         setAllSongs(allSongsData);
         console.log("AllSongsData");
@@ -40,6 +41,7 @@ export default function Dashboard() {
         console.log(userBasedData);
 
         setUserBasedSongs(userBasedData);
+        setMlRecommendedSongs(mlBasedData);
       } catch (err) {
         console.error("Error fetching data:", err);
         setError("Failed to load music data. Please try again later.");
@@ -133,6 +135,10 @@ export default function Dashboard() {
       <MusicList
         title="User-Based Collaborative Filtering Songs"
         songs={userBasedSongs}
+      />
+      <MusicList
+        title="Rrcvae recommendation songs"
+        songs={mlRecommendedSongs}
       />
     </div>
   );

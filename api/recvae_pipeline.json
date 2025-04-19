@@ -1,45 +1,5 @@
 {
   "components": {
-    "comp-deploy-fastapi-predictor": {
-      "executorLabel": "exec-deploy-fastapi-predictor",
-      "inputDefinitions": {
-        "parameters": {
-          "docker_folder": {
-            "parameterType": "STRING"
-          },
-          "gcp_credentials_json": {
-            "parameterType": "STRING"
-          },
-          "gcr_image": {
-            "parameterType": "STRING"
-          },
-          "gcs_bucket": {
-            "parameterType": "STRING"
-          },
-          "model_prefix": {
-            "defaultValue": "results",
-            "isOptional": true,
-            "parameterType": "STRING"
-          },
-          "project_id": {
-            "parameterType": "STRING"
-          },
-          "region": {
-            "parameterType": "STRING"
-          },
-          "service_name": {
-            "parameterType": "STRING"
-          }
-        }
-      },
-      "outputDefinitions": {
-        "parameters": {
-          "Output": {
-            "parameterType": "STRING"
-          }
-        }
-      }
-    },
     "comp-extract-matrix-component": {
       "executorLabel": "exec-extract-matrix-component",
       "inputDefinitions": {
@@ -62,6 +22,22 @@
               "schemaTitle": "system.Dataset",
               "schemaVersion": "0.0.1"
             }
+          }
+        }
+      }
+    },
+    "comp-redeploy-music-recom-component": {
+      "executorLabel": "exec-redeploy-music-recom-component",
+      "inputDefinitions": {
+        "parameters": {
+          "gcp_credentials_json": {
+            "parameterType": "STRING"
+          },
+          "project_id": {
+            "parameterType": "STRING"
+          },
+          "region": {
+            "parameterType": "STRING"
           }
         }
       }
@@ -131,26 +107,6 @@
   },
   "deploymentSpec": {
     "executors": {
-      "exec-deploy-fastapi-predictor": {
-        "container": {
-          "args": [
-            "--executor_input",
-            "{{$}}",
-            "--function_to_execute",
-            "deploy_fastapi_predictor"
-          ],
-          "command": [
-            "sh",
-            "-c",
-            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.12.1' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'google-cloud-storage' && \"$0\" \"$@\"\n",
-            "sh",
-            "-ec",
-            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef deploy_fastapi_predictor(\n    gcp_credentials_json: str,\n    project_id: str,\n    region: str,\n    service_name: str,\n    docker_folder: str,\n    gcr_image: str,\n    gcs_bucket: str,\n    model_prefix: str = \"results\"\n) -> str:\n    import os\n    import subprocess\n    import shutil\n    from google.cloud import storage\n\n    os.makedirs(\"/tmp/gcp\", exist_ok=True)\n    cred_path = \"/tmp/gcp/credentials.json\"\n    with open(cred_path, \"w\") as f:\n        f.write(gcp_credentials_json)\n\n    subprocess.run([\n        \"gcloud\", \"auth\", \"activate-service-account\", \"--key-file\", cred_path\n    ], check=True)\n\n    subprocess.run([\n        \"gcloud\", \"config\", \"set\", \"project\", project_id\n    ], check=True)\n\n    model_dir = os.path.join(docker_folder, \"model\")\n    os.makedirs(model_dir, exist_ok=True)\n\n    storage_client = storage.Client.from_service_account_json(cred_path)\n    bucket = storage_client.bucket(gcs_bucket)\n\n    model_blob = bucket.blob(f\"{model_prefix}/recvae_model.pt\")\n    meta_blob = bucket.blob(f\"{model_prefix}/recvae_metadata.pkl\")\n\n    model_blob.download_to_filename(os.path.join(model_dir, \"recvae_model.pt\"))\n    meta_blob.download_to_filename(os.path.join(model_dir, \"recvae_metadata.pkl\"))\n\n    template_dir = os.path.join(os.path.dirname(__file__), \"fastapi_template\")\n    for filename in [\"inference.py\", \"recvae_model.py\", \"requirements.txt\", \"Dockerfile\"]:\n        shutil.copy(os.path.join(template_dir, filename), os.path.join(docker_folder, filename))\n\n    os.chdir(docker_folder)\n\n    subprocess.run([\n        \"gcloud\", \"builds\", \"submit\",\n        \"--tag\", gcr_image,\n        \"--project\", project_id\n    ], check=True)\n\n    subprocess.run([\n        \"gcloud\", \"run\", \"deploy\", service_name,\n        \"--image\", gcr_image,\n        \"--region\", region,\n        \"--platform\", \"managed\",\n        \"--allow-unauthenticated\",\n        \"--project\", project_id\n    ], check=True)\n\n    service_url = f\"https://{service_name}-{region}.a.run.app\"\n    print(\"\u2705 Cloud Run service deployed:\", service_url)\n    return service_url\n\n"
-          ],
-          "image": "gcr.io/cloud-builders/gcloud"
-        }
-      },
       "exec-extract-matrix-component": {
         "container": {
           "args": [
@@ -167,6 +123,26 @@
             "-ec",
             "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
             "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef extract_matrix_component(\n    database_url: str,\n    matrix_output: Output[Dataset],\n    metadata_output: Output[Dataset]\n):\n    import numpy as np\n    import pickle\n    import os\n    from sqlalchemy import create_engine\n    from sqlalchemy.orm import sessionmaker, relationship, declarative_base\n    from sqlalchemy import Column, Integer, String, ForeignKey, Table, Boolean, BigInteger\n\n    Base = declarative_base()\n\n    user_likes = Table(\n        'user_likes', Base.metadata,\n        Column('username', String, ForeignKey('users.username'), primary_key=True),\n        Column('song_id', Integer, ForeignKey('tracks.id'), primary_key=True)\n    )\n\n    class User(Base):\n        __tablename__ = 'users'\n        id = Column(Integer, primary_key=True, autoincrement=True)\n        username = Column(String, unique=True, nullable=False)\n        liked_songs = relationship('Track', secondary=user_likes, back_populates='liked_by')\n\n    class Artist(Base):\n        __tablename__ = 'artists'\n        id = Column(Integer, primary_key=True, autoincrement=True)\n        name = Column(String, nullable=False)\n\n    class Track(Base):\n        __tablename__ = 'tracks'\n        id = Column(BigInteger, primary_key=True, autoincrement=False)\n        title = Column(String, nullable=False)\n        link = Column(String)\n        duration = Column(BigInteger)\n        preview = Column(String)\n        position = Column(BigInteger)\n        rank = Column(BigInteger)\n        explicit_lyrics = Column(Boolean)\n        album_id = Column(BigInteger)\n        album_title = Column(String)\n        album_cover = Column(String)\n        artist_id = Column(BigInteger, ForeignKey('artists.id'))\n        liked_by = relationship('User', secondary=user_likes, back_populates='liked_songs')\n\n    engine = create_engine(database_url)\n    SessionLocal = sessionmaker(bind=engine)\n    session = SessionLocal()\n\n    users = session.query(User).all()\n    tracks = session.query(Track).all()\n\n    user_ids = [user.username for user in users]\n    track_ids = [track.id for track in tracks]\n\n    user_idx = {u: i for i, u in enumerate(user_ids)}\n    track_idx = {t: i for i, t in enumerate(track_ids)}\n\n    matrix = np.zeros((len(users), len(tracks)), dtype=np.float32)\n    for user in users:\n        for track in user.liked_songs:\n            if track.id in track_idx:\n                matrix[user_idx[user.username], track_idx[track.id]] = 1.0\n\n    os.makedirs(matrix_output.path, exist_ok=True)\n    os.makedirs(metadata_output.path, exist_ok=True)\n\n    np.save(os.path.join(matrix_output.path, \"matrix.npy\"), matrix)\n    with open(os.path.join(metadata_output.path, \"meta.pkl\"), \"wb\") as f:\n        pickle.dump({\"user_ids\": user_ids, \"track_ids\": track_ids}, f)\n\n    session.close()\n\n"
+          ],
+          "image": "python:3.10"
+        }
+      },
+      "exec-redeploy-music-recom-component": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "redeploy_music_recom_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.12.1' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'google-cloud-run' 'google-auth' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef redeploy_music_recom_component(\n    gcp_credentials_json: str,\n    project_id: str,\n    region: str\n):\n    import os\n    from google.cloud import run_v2\n    from google.oauth2 import service_account\n    from google.cloud.run_v2.types import Service, RevisionTemplate, Container\n\n    # --- Save credentials ---\n    credentials_path = \"/tmp/credentials.json\"\n    with open(credentials_path, \"w\") as f:\n        f.write(gcp_credentials_json)\n\n    credentials = service_account.Credentials.from_service_account_file(\n        credentials_path,\n        scopes=[\"https://www.googleapis.com/auth/cloud-platform\"]\n    )\n\n    # --- Cloud Run client ---\n    client = run_v2.ServicesClient(credentials=credentials)\n\n    service_name = \"music-recom\"\n    parent = f\"projects/{project_id}/locations/{region}\"\n    full_service_name = f\"{parent}/services/{service_name}\"\n\n    # --- Construct Cloud Run Service object ---\n    service = Service(\n        name=full_service_name,\n        template=RevisionTemplate(\n            containers=[Container(image=\"us-docker.pkg.dev/music-rate-457008/music/music-recom:latest\")]\n        ),\n        ingress=run_v2.IngressTraffic.INGRESS_TRAFFIC_ALL,\n    )\n\n    # --- Update or create service ---\n    operation = client.update_service(\n        run_v2.UpdateServiceRequest(\n            service=service,\n            allow_missing=True\n        )\n    )\n\n    response = operation.result(timeout=300)\n    print(f\"\u2705 music-recom Cloud Run service redeployed: {response.uri}\")\n\n"
           ],
           "image": "python:3.10"
         }
@@ -219,48 +195,6 @@
   "root": {
     "dag": {
       "tasks": {
-        "deploy-fastapi-predictor": {
-          "cachingOptions": {
-            "enableCache": true
-          },
-          "componentRef": {
-            "name": "comp-deploy-fastapi-predictor"
-          },
-          "dependentTasks": [
-            "upload-model-component"
-          ],
-          "inputs": {
-            "parameters": {
-              "docker_folder": {
-                "componentInputParameter": "docker_folder"
-              },
-              "gcp_credentials_json": {
-                "componentInputParameter": "gcp_credentials_json"
-              },
-              "gcr_image": {
-                "componentInputParameter": "gcr_image"
-              },
-              "gcs_bucket": {
-                "componentInputParameter": "output_dir"
-              },
-              "model_prefix": {
-                "componentInputParameter": "model_prefix"
-              },
-              "project_id": {
-                "componentInputParameter": "project_id"
-              },
-              "region": {
-                "componentInputParameter": "region"
-              },
-              "service_name": {
-                "componentInputParameter": "service_name"
-              }
-            }
-          },
-          "taskInfo": {
-            "name": "deploy-fastapi-predictor"
-          }
-        },
         "extract-matrix-component": {
           "cachingOptions": {
             "enableCache": true
@@ -277,6 +211,33 @@
           },
           "taskInfo": {
             "name": "extract-matrix-component"
+          }
+        },
+        "redeploy-music-recom-component": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-redeploy-music-recom-component"
+          },
+          "dependentTasks": [
+            "upload-model-component"
+          ],
+          "inputs": {
+            "parameters": {
+              "gcp_credentials_json": {
+                "componentInputParameter": "gcp_credentials_json"
+              },
+              "project_id": {
+                "componentInputParameter": "project_id"
+              },
+              "region": {
+                "componentInputParameter": "region"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "redeploy-music-recom-component"
           }
         },
         "train-model-component": {
@@ -348,18 +309,7 @@
         "database_url": {
           "parameterType": "STRING"
         },
-        "docker_folder": {
-          "parameterType": "STRING"
-        },
         "gcp_credentials_json": {
-          "parameterType": "STRING"
-        },
-        "gcr_image": {
-          "parameterType": "STRING"
-        },
-        "model_prefix": {
-          "defaultValue": "results",
-          "isOptional": true,
           "parameterType": "STRING"
         },
         "output_dir": {
@@ -369,9 +319,6 @@
           "parameterType": "STRING"
         },
         "region": {
-          "parameterType": "STRING"
-        },
-        "service_name": {
           "parameterType": "STRING"
         }
       }

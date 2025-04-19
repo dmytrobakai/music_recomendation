@@ -2,26 +2,12 @@
 
 import { useEffect, useState } from "react";
 
-import MusicList from "@/components/music/MusicList";
 import Button from "@/components/ui/Button";
+import MusicList from "@/components/music/MusicList";
+import { Song } from "@/types/song";
 import { useRouter } from "next/navigation";
 
-interface Song {
-  id: number;
-  title: string;
-  link: string;
-  duration: number;
-  preview: string;
-  position: string;
-  rank: number;
-  explicit_lyrics: number;
-  artist_id: number;
-  artist_name: string;
-  album_id: number;
-  album_title: string;
-  album_cover: string;
-}
-
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 export default function LikedSongs() {
   const [likedSongs, setLikedSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +19,7 @@ export default function LikedSongs() {
       setLoading(true);
       const username = localStorage.getItem("username");
       try {
-        const response = await fetch("http://localhost:8000/liked/" + username);
+        const response = await fetch(`${API_URL}/liked/` + username);
         if (!response.ok) {
           throw new Error("Failed to fetch liked songs");
         }
@@ -167,10 +153,6 @@ function LoadingSpinner() {
         strokeLinejoin="round"
         style={{
           animation: "spin 1s linear infinite",
-          "@keyframes spin": {
-            "0%": { transform: "rotate(0deg)" },
-            "100%": { transform: "rotate(360deg)" },
-          },
         }}
       >
         <circle cx="12" cy="12" r="10" opacity="0.2" />

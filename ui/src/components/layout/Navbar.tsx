@@ -147,6 +147,7 @@ const Navbar: React.FC = () => {
           size="sm"
           onClick={handleLogout}
           icon={<LogoutIcon />}
+          color="white"
         >
           Logout
         </Button>

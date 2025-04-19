@@ -1,12 +1,6 @@
 import React, { useState } from "react";
 
-interface Song {
-  id: number;
-  title: string;
-  artist_name: string;
-  album_cover: string;
-  artist_id: number; // додано поле
-}
+import { Song } from "@/types/song";
 
 interface MusicCardProps {
   song: Song;

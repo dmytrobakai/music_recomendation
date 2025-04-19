@@ -1,6 +1,7 @@
-from kfp.dsl import component, pipeline, Input, Output, Dataset, Model
+from kfp.dsl import component, pipeline, Input, Output, Dataset, Model, Artifact
 from kfp import compiler
 import os
+import uuid
 
 @component(
     base_image="python:3.10",
@@ -80,7 +81,6 @@ def extract_matrix_component(
         pickle.dump({"user_ids": user_ids, "track_ids": track_ids}, f)
 
     session.close()
-
 
 @component(
     base_image="python:3.10",
@@ -169,7 +169,6 @@ def train_model_component(
     with open(os.path.join(model_output.path, "recvae_metadata.pkl"), "wb") as f:
         pickle.dump(meta, f)
 
-
 @component(
     base_image="python:3.10",
     packages_to_install=["google-cloud-storage"]
@@ -194,76 +193,56 @@ def upload_model_component(
     bucket.blob(f"{prefix}/recvae_model.pt").upload_from_filename(os.path.join(model_path.path, "recvae_model.pt"))
     bucket.blob(f"{prefix}/recvae_metadata.pkl").upload_from_filename(os.path.join(model_path.path, "recvae_metadata.pkl"))
 
-
 @component(
-    base_image="gcr.io/cloud-builders/gcloud",
-    packages_to_install=["google-cloud-storage"]
+    base_image="python:3.10",
+    packages_to_install=["google-cloud-run", "google-auth"]
 )
-def deploy_fastapi_predictor(
+def redeploy_music_recom_component(
     gcp_credentials_json: str,
     project_id: str,
-    region: str,
-    service_name: str,
-    docker_folder: str,
-    gcr_image: str,
-    gcs_bucket: str,
-    model_prefix: str = "results"
-) -> str:
+    region: str
+):
     import os
-    import subprocess
-    import shutil
-    from google.cloud import storage
+    from google.cloud import run_v2
+    from google.oauth2 import service_account
+    from google.cloud.run_v2.types import Service, RevisionTemplate, Container
 
-    os.makedirs("/tmp/gcp", exist_ok=True)
-    cred_path = "/tmp/gcp/credentials.json"
-    with open(cred_path, "w") as f:
+    # --- Save credentials ---
+    credentials_path = "/tmp/credentials.json"
+    with open(credentials_path, "w") as f:
         f.write(gcp_credentials_json)
 
-    subprocess.run([
-        "gcloud", "auth", "activate-service-account", "--key-file", cred_path
-    ], check=True)
+    credentials = service_account.Credentials.from_service_account_file(
+        credentials_path,
+        scopes=["https://www.googleapis.com/auth/cloud-platform"]
+    )
 
-    subprocess.run([
-        "gcloud", "config", "set", "project", project_id
-    ], check=True)
+    # --- Cloud Run client ---
+    client = run_v2.ServicesClient(credentials=credentials)
 
-    model_dir = os.path.join(docker_folder, "model")
-    os.makedirs(model_dir, exist_ok=True)
+    service_name = "music-recom"
+    parent = f"projects/{project_id}/locations/{region}"
+    full_service_name = f"{parent}/services/{service_name}"
 
-    storage_client = storage.Client.from_service_account_json(cred_path)
-    bucket = storage_client.bucket(gcs_bucket)
+    # --- Construct Cloud Run Service object ---
+    service = Service(
+        name=full_service_name,
+        template=RevisionTemplate(
+            containers=[Container(image="us-docker.pkg.dev/music-rate-457008/music/music-recom:latest")]
+        ),
+        ingress=run_v2.IngressTraffic.INGRESS_TRAFFIC_ALL,
+    )
 
-    model_blob = bucket.blob(f"{model_prefix}/recvae_model.pt")
-    meta_blob = bucket.blob(f"{model_prefix}/recvae_metadata.pkl")
+    # --- Update or create service ---
+    operation = client.update_service(
+        run_v2.UpdateServiceRequest(
+            service=service,
+            allow_missing=True
+        )
+    )
 
-    model_blob.download_to_filename(os.path.join(model_dir, "recvae_model.pt"))
-    meta_blob.download_to_filename(os.path.join(model_dir, "recvae_metadata.pkl"))
-
-    template_dir = os.path.join(os.path.dirname(__file__), "fastapi_template")
-    for filename in ["inference.py", "recvae_model.py", "requirements.txt", "Dockerfile"]:
-        shutil.copy(os.path.join(template_dir, filename), os.path.join(docker_folder, filename))
-
-    os.chdir(docker_folder)
-
-    subprocess.run([
-        "gcloud", "builds", "submit",
-        "--tag", gcr_image,
-        "--project", project_id
-    ], check=True)
-
-    subprocess.run([
-        "gcloud", "run", "deploy", service_name,
-        "--image", gcr_image,
-        "--region", region,
-        "--platform", "managed",
-        "--allow-unauthenticated",
-        "--project", project_id
-    ], check=True)
-
-    service_url = f"https://{service_name}-{region}.a.run.app"
-    print("✅ Cloud Run service deployed:", service_url)
-    return service_url
-
+    response = operation.result(timeout=300)
+    print(f"✅ music-recom Cloud Run service redeployed: {response.uri}")
 
 @pipeline(name="recvae-training-pipeline")
 def recvae_pipeline(
@@ -272,12 +251,7 @@ def recvae_pipeline(
     output_dir: str,
     project_id: str,
     region: str,
-    service_name: str,
-    docker_folder: str,
-    gcr_image: str,
-    model_prefix: str = "results"
 ):
-    # Step 1: Extract user-track matrix and metadata
     extract_op = extract_matrix_component(database_url=database_url)
 
     train_op = train_model_component(
@@ -291,21 +265,12 @@ def recvae_pipeline(
         output_dir=output_dir
     )
 
-    deploy_op = deploy_fastapi_predictor(
+    redeploy_op = redeploy_music_recom_component(
         gcp_credentials_json=gcp_credentials_json,
         project_id=project_id,
-        region=region,
-        service_name=service_name,
-        docker_folder=docker_folder,
-        gcr_image=gcr_image,
-        gcs_bucket=output_dir,
-        model_prefix=model_prefix
+        region=region
     )
-
-    # Optional: ensure deploy runs after upload
-    deploy_op.after(upload_op)
-
-
+    redeploy_op.after(upload_op)
 
 compiler.Compiler().compile(
     pipeline_func=recvae_pipeline,

@@ -1,20 +1,20 @@
-import React, { ButtonHTMLAttributes } from 'react';
+import React, { ButtonHTMLAttributes } from "react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "primary" | "secondary" | "outline" | "ghost";
+  size?: "sm" | "md" | "lg";
   fullWidth?: boolean;
   icon?: React.ReactNode;
   children: React.ReactNode;
 }
 
 const Button: React.FC<ButtonProps> = ({
-  variant = 'primary',
-  size = 'md',
+  variant = "primary",
+  size = "md",
   fullWidth = false,
   icon,
   children,
-  className = '',
+  className = "",
   ...props
 }) => {
   // Button base styles
@@ -27,14 +27,14 @@ const Button: React.FC<ButtonProps> = ({
     transition: all var(--transition-fast);
     gap: var(--space-sm);
     white-space: nowrap;
-    ${fullWidth ? 'width: 100%;' : ''}
+    ${fullWidth ? "width: 100%;" : ""}
   `;
 
   // Size styles
   const sizeStyles = {
-    sm: 'padding: 8px 14px; font-size: 0.875rem;',
-    md: 'padding: 10px 18px; font-size: 0.9375rem;',
-    lg: 'padding: 12px 24px; font-size: 1rem;',
+    sm: "padding: 8px 14px; font-size: 0.875rem;",
+    md: "padding: 10px 18px; font-size: 0.9375rem;",
+    lg: "padding: 12px 24px; font-size: 1rem;",
   }[size];
 
   // Variant styles
@@ -93,11 +93,7 @@ const Button: React.FC<ButtonProps> = ({
   `;
 
   return (
-    <button
-      style={{ cssText: combinedStyles }}
-      className={className}
-      {...props}
-    >
+    <button className={className} {...props}>
       {icon && <span className="button-icon">{icon}</span>}
       {children}
     </button>

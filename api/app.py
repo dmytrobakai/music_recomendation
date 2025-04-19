@@ -6,11 +6,16 @@ from sqlalchemy.orm import Session
 from collections import defaultdict
 import random
 from typing import Optional
-
+import httpx 
 from db_models import User as DBUser, Track, Artist, user_likes
 from db_config import SessionLocal
 from init_db import init_db
+import os
+from dotenv import load_dotenv
 
+load_dotenv
+
+API_URL= os.environ["API_URL"]
 app = FastAPI(
     title="MusicApp API",
     description="Simple music app with liked songs and recommendations",
@@ -19,7 +24,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,7 +42,6 @@ def get_db():
     finally:
         db.close()
 
-# ======================= SCHEMAS =======================
 class LoginRequest(BaseModel):
     username: str
 
@@ -59,7 +63,6 @@ class SongOut(BaseModel):
         orm_mode = True
 
 
-# ======================= ROUTES =======================
 @app.post("/login")
 def login(data: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(DBUser).filter(DBUser.username == data.username).first()
@@ -138,30 +141,52 @@ def delete_artist_and_songs(artist_id: int, db: Session = Depends(get_db)):
 
 @app.get("/recommendations/{username}", response_model=List[SongOut])
 def recommend_songs(username: str, top_n: int = 5, db: Session = Depends(get_db)):
-    users = db.query(DBUser).all()
-    user_likes_map = defaultdict(set)
+    try:
+        users = db.query(DBUser).all()
+        user_likes_map = defaultdict(set)
 
-    for user in users:
-        for song in user.liked_songs:
-            user_likes_map[user.username].add(song.id)
+        for user in users:
+            for song in user.liked_songs:
+                user_likes_map[user.username].add(song.id)
 
-    if username not in user_likes_map:
+        if username not in user_likes_map:
+            return []
+
+        target_likes = user_likes_map[username]
+        scores = defaultdict(float)
+
+        for other_user, other_likes in user_likes_map.items():
+            if other_user == username:
+                continue
+            intersection = len(target_likes & other_likes)
+            union = len(target_likes | other_likes)
+            similarity = intersection / union if union else 0
+            for song_id in other_likes - target_likes:
+                scores[song_id] += similarity
+
+        top_song_ids = [song_id for song_id, _ in sorted(scores.items(), key=lambda x: -x[1])[:top_n]]
+        if not top_song_ids:
+            print("Error to retrieve recommendation songs")
+            return []
+
+        return db.query(Track).filter(Track.id.in_(top_song_ids)).all()
+    except Exception as e:
+        print("Error to retrieve recommendation songs")
         return []
 
-    target_likes = user_likes_map[username]
-    scores = defaultdict(float)
-
-    for other_user, other_likes in user_likes_map.items():
-        if other_user == username:
-            continue
-        intersection = len(target_likes & other_likes)
-        union = len(target_likes | other_likes)
-        similarity = intersection / union if union else 0
-        for song_id in other_likes - target_likes:
-            scores[song_id] += similarity
-
-    top_song_ids = [song_id for song_id, _ in sorted(scores.items(), key=lambda x: -x[1])[:top_n]]
-    if not top_song_ids:
+@app.get("/ml-recommendations/{username}", response_model=List[SongOut], tags=["ML Recommendations"])
+def ml_recommend_songs(username: str, top_k: int = 10, db: Session = Depends(get_db)):
+    try:
+        api2_url = f"{API_URL}/recommend/{username}?top_k={top_k}"
+        response = httpx.get(api2_url)
+        response.raise_for_status()
+        data = response.json()
+        track_ids = data.get("recommended_track_ids", [])
+    except Exception as e:
         return []
 
-    return db.query(Track).filter(Track.id.in_(top_song_ids)).all()
+    if not track_ids:
+        return []
+
+    songs = db.query(Track).filter(Track.id.in_(track_ids)).all()
+    return songs
